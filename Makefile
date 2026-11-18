@@ -1,7 +1,7 @@
 UUID := netbird@jfenal.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
-.PHONY: install uninstall schemas pack test nested enable disable prefs logs
+.PHONY: install uninstall schemas pack test nested enable disable prefs logs screenshot
 
 install: schemas
 	mkdir -p $(dir $(INSTALL_DIR))
@@ -38,3 +38,7 @@ nested: install
 
 logs:
 	journalctl --user -f -o cat /usr/bin/gnome-shell
+
+# Regenerate screenshots/quick-settings.png (headless nested shell, demo data).
+screenshot:
+	tools/screenshot/run.sh

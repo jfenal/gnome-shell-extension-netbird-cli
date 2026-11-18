@@ -35,4 +35,5 @@ make enable      # enable in your session (log out/in first on Wayland)
 make prefs       # open preferences
 make logs        # follow gnome-shell logs
 make pack        # build dist/*.zip for extensions.gnome.org
+make screenshot  # regenerate screenshots/quick-settings.png (headless, demo data)
 ```
