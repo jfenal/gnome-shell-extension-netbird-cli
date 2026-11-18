@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="org.gnome.shell.extensions.netbird" path="/org/gnome/shell/extensions/netbird/">
+    <key name="poll-interval" type="u">
+      <default>5</default>
+      <range min="1" max="300"/>
+      <summary>Status poll interval (seconds)</summary>
+    </key>
+    <key name="netbird-path" type="s">
+      <default>''</default>
+      <summary>Path to the netbird CLI</summary>
+      <description>Empty means look up "netbird" in PATH.</description>
+    </key>
+    <key name="expiry-warning-minutes" type="u">
+      <default>30</default>
+      <range min="0" max="1440"/>
+      <summary>Warn this many minutes before the SSO session expires</summary>
+      <description>0 disables the warning.</description>
+    </key>
+    <key name="show-panel-icon" type="b">
+      <default>true</default>
+      <summary>Show a panel icon while connected</summary>
+    </key>
+  </schema>
+</schemalist>
