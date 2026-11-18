@@ -247,9 +247,9 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
                 title: 'NetBird',
                 iconName: ICON_CONNECTED,
             });
-            this._notificationSource.connect('destroy', () => {
+            this._notificationSource.connectObject('destroy', () => {
                 this._notificationSource = null;
-            });
+            }, this);
             Main.messageTray.add(this._notificationSource);
         }
         const notification = new MessageTray.Notification({
@@ -321,7 +321,9 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
 
     destroy() {
         this._lifeCancellable.cancel();
+        this._notificationSource?.disconnectObject(this);
         this._notificationSource?.destroy();
+        this._notificationSource = null;
         super.destroy();
     }
 });
@@ -337,8 +339,10 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
         this._icon.visible = false;
 
         this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings));
-        this._toggle.connect('notify::checked', () => this._syncIcon());
-        this._toggle.connect('notify::icon-name', () => this._syncIcon());
+        this._toggle.connectObject(
+            'notify::checked', () => this._syncIcon(),
+            'notify::icon-name', () => this._syncIcon(),
+            this);
         this.quickSettingsItems.push(this._toggle);
 
         this._settingsIds = [
@@ -372,6 +376,7 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
 
     destroy() {
         this._stopPolling();
+        this._toggle.disconnectObject(this);
         this._settingsIds.forEach(id => this._settings.disconnect(id));
         this._settingsIds = [];
         this.quickSettingsItems.forEach(item => item.destroy());
