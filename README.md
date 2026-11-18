@@ -3,6 +3,8 @@
 Quick Settings toggle to connect/disconnect [NetBird](https://netbird.io),
 driven by the `netbird` CLI.
 
+![Quick Settings](screenshots/quick-settings.png)
+
 ## Features
 
 - **Toggle** runs `netbird up` / `netbird down`; subtitle shows connected peers
