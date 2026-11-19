@@ -10,6 +10,9 @@ spec ?= gnome-shell-extension-netbird-cli.spec
 
 .PHONY: srpm
 
+# The snapshot suffix (.<UTC commit date>.git<hash>) is written into the
+# packaged spec, not passed with --define: COPR rebuilds the binary RPM from
+# the SRPM's spec, where a define would be lost.
 srpm:
 	dnf -y install git rpm-build
 	git config --global --add safe.directory "$(CURDIR)"
@@ -20,5 +23,6 @@ srpm:
 	src=$$(mktemp -d); \
 	git archive --format=tar.gz --prefix="$$name-$$version/" \
 	    -o "$$src/$$name-$$version.tar.gz" HEAD; \
+	sed "s/%{?snapinfo}/$$snapinfo/" "$(spec)" > "$$src/$(spec)"; \
 	TZ=UTC rpmbuild -bs --define "_sourcedir $$src" --define "_srcrpmdir $(outdir)" \
-	    --define "snapinfo $$snapinfo" "$(spec)"
+	    "$$src/$(spec)"
