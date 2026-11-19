@@ -39,6 +39,13 @@ export function createExtensionPage(_model, window) {
     settings.bind('show-panel-icon', iconRow, 'active', Gio.SettingsBindFlags.DEFAULT);
     statusGroup.add(iconRow);
 
+    const vpnRow = new Adw.SwitchRow({
+        title: 'Manage GNOME VPN',
+        subtitle: 'Disable GNOME\'s VPN button while NetBird is connected',
+    });
+    settings.bind('guard-gnome-vpn', vpnRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+    statusGroup.add(vpnRow);
+
     const sessionGroup = new Adw.PreferencesGroup({title: 'Session'});
     page.add(sessionGroup);
 

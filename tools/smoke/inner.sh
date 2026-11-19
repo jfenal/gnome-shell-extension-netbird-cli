@@ -76,6 +76,10 @@ wait_for 10 "tile unchecked (Idle)" js_true "$TILE.checked === false && !$TILE._
 
 STEP="2 (toggle)"
 say "$STEP"
+# Safety: never click Connect with the VPN guard on — it would disconnect
+# the host's real VPNs (the nested Shell shares the system NetworkManager).
+js_true "Main.extensionManager.lookup('$UUID').stateObj.getSettings().get_boolean('guard-gnome-vpn') === false" ||
+    fail "guard-gnome-vpn is not false in the nested session; refusing to click Connect"
 ev "$TILE.emit('clicked', 1); 'ok'" >/dev/null
 wait_for 10 "'netbird up' in calls.log" called up
 wait_for 10 "tile checked after up" js_true "$TILE.checked === true"

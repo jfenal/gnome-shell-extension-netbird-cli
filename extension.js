@@ -7,7 +7,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
 
-import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {Extension, InjectionManager} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
@@ -17,6 +17,7 @@ import {NetbirdCli, Status} from './netbird/cli.js';
 import {errorText, formatLocal, hostAddress, secondsUntil, STATUS_LABELS} from './netbird/parse.js';
 import {StatusIcons} from './shell/icons.js';
 import {pollIntervalSeconds} from './shell/polling.js';
+import {VpnButtonGuard} from './shell/vpnButtonGuard.js';
 
 // Labels for the long-running actions while they are in flight.
 const ACTION_LABELS = {
@@ -54,9 +55,12 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         this._warnedExpiry = null;
         this._lastConnected = false;
         this._notificationSource = null;
+        this._vpnGuard = null;
 
         this._buildMenu();
         this.connect('clicked', () => this._onClicked());
+        this._settings.connectObject('changed::guard-gnome-vpn', () => this._syncVpnGuard(), this);
+        this._syncVpnGuard();
         this.refresh();
     }
 
@@ -124,7 +128,23 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         }
     }
 
+    // Upstream behaviour (netbirdio/gnome-extension): while NetBird is
+    // connected, GNOME's VPN toggle is insensitive and wt0 is hidden from it.
+    _syncVpnGuard() {
+        const wanted = this._settings.get_boolean('guard-gnome-vpn');
+        if (wanted && !this._vpnGuard) {
+            this._vpnGuard = new VpnButtonGuard(
+                Main.panel.statusArea.quickSettings, new InjectionManager(),
+                error => this._notify('GNOME VPN could not be disconnected', error.message ?? String(error)));
+            this._vpnGuard.setBlocked(this.isConnected);
+        } else if (!wanted && this._vpnGuard) {
+            this._vpnGuard.destroy();
+            this._vpnGuard = null;
+        }
+    }
+
     _sync() {
+        this._vpnGuard?.setBlocked(this.isConnected);
         const data = this._data;
         const statusLabel = STATUS_LABELS[this._status] ?? this._status;
         let state;
@@ -324,6 +344,15 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
 
         let ok = false;
         try {
+            if (args[0] === 'up' && this._vpnGuard) {
+                try {
+                    await this._vpnGuard.disconnectActiveVpns();
+                } catch (e) {
+                    if (!cancellable.is_cancelled())
+                        this._notify('GNOME VPN could not be disconnected', e.message ?? String(e));
+                    return false;
+                }
+            }
             const result = await this._cli.run(args, cancellable);
             ok = result.ok;
             if (!ok && !cancellable.is_cancelled())
@@ -349,6 +378,9 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
 
     destroy() {
         this._lifeCancellable.cancel();
+        this._settings.disconnectObject(this);
+        this._vpnGuard?.destroy();
+        this._vpnGuard = null;
         this._notificationSource?.disconnectObject(this);
         this._notificationSource?.destroy();
         this._notificationSource = null;

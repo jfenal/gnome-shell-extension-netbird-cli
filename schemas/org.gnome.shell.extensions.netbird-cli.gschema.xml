@@ -21,5 +21,10 @@
       <default>true</default>
       <summary>Show a panel icon while connected</summary>
     </key>
+    <key name="guard-gnome-vpn" type="b">
+      <default>true</default>
+      <summary>Manage GNOME VPN while NetBird is connected</summary>
+      <description>Disable GNOME's VPN button while NetBird is connected, disconnect other VPNs before connecting, and hide NetBird's wt0 interface from GNOME's VPN list.</description>
+    </key>
   </schema>
 </schemalist>

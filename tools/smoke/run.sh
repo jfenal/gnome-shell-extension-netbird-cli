@@ -25,11 +25,17 @@ glib-compile-schemas "$REPO/schemas"
 # Exported before dbus-run-session so D-Bus-activated services (notably the
 # org.gnome.Shell.Extensions prefs process) inherit them too: mock CLI first
 # in PATH, nested Wayland socket only (no X11 fallback to the real display).
-export GSETTINGS_BACKEND=memory XDG_DATA_HOME="$WORK/data" \
+# Settings live in a throwaway keyfile (not the memory backend) so they can be
+# preset here and are shared by the Shell and prefs processes.
+export GSETTINGS_BACKEND=keyfile XDG_CONFIG_HOME="$WORK/config" XDG_DATA_HOME="$WORK/data" \
     PATH="$HERE/bin:$PATH" SMOKE_STATE="$WORK/state" \
     WAYLAND_DISPLAY="netbird-smoke-$$" GDK_BACKEND=wayland \
     NETBIRD_PREFS_PAGE_FILE="$WORK/prefs-page" WORK OUT UUID
 unset DISPLAY
+
+# The nested Shell sees the real NetworkManager (system bus): keep the VPN
+# guard off so the smoke test never disconnects the host's VPNs.
+GSETTINGS_SCHEMA_DIR="$REPO/schemas" gsettings set org.gnome.shell.extensions.netbird-cli guard-gnome-vpn false
 
 fail() {
     echo "smoke: FAILED: $*" >&2
