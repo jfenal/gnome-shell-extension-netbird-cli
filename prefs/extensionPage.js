@@ -52,7 +52,9 @@ export function createExtensionPage(_model, window) {
     const expiryRow = new Adw.SpinRow({
         title: 'Expiry warning',
         subtitle: 'Minutes before SSO session expiry to notify (0 disables)',
-        adjustment: new Gtk.Adjustment({lower: 0, upper: 1440, stepIncrement: 5, pageIncrement: 30}),
+        adjustment: new Gtk.Adjustment({
+            lower: 0, upper: 1440, stepIncrement: 5, pageIncrement: 30,
+        }),
     });
     settings.bind('expiry-warning-minutes', expiryRow, 'value', Gio.SettingsBindFlags.DEFAULT);
     sessionGroup.add(expiryRow);

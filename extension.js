@@ -36,7 +36,7 @@ function isCancelled(e) {
 }
 
 const NetbirdToggle = GObject.registerClass(
-class NetbirdToggle extends QuickSettings.QuickMenuToggle {
+class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
     _init(settings, cli, statusIcons, extension, indicator) {
         super._init({
             title: 'NetBird CLI',
@@ -130,7 +130,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
             this._checkSessionExpiry();
         } catch (e) {
             if (!isCancelled(e))
-                logError(e, 'NetBird: status refresh failed');
+                console.error('NetBird: status refresh failed:', e);
         } finally {
             this._refreshing = false;
         }
@@ -236,7 +236,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         } catch (e) {
             if (isCancelled(e))
                 return;
-            logError(e, 'NetBird: listing profiles failed');
+            console.error('NetBird: listing profiles failed:', e);
         }
         if (this._lifeCancellable.is_cancelled())
             return;
@@ -310,7 +310,8 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         // Track session expiry: notify when the session expires after we saw Connected.
         if (this._status === Status.CONNECTED) {
             this._lastConnected = true;
-        } else if ((this._status === Status.SESSION_EXPIRED || this._status === Status.NEEDS_LOGIN) &&
+        } else if ((this._status === Status.SESSION_EXPIRED ||
+                    this._status === Status.NEEDS_LOGIN) &&
                    this._lastConnected) {
             this._lastConnected = false;
             this._notify(
@@ -429,12 +430,13 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
             }
             const result = await this._cli.run(args, cancellable);
             ok = result.ok;
-            if (!ok && !cancellable.is_cancelled())
+            if (!ok && !cancellable.is_cancelled()) {
                 Main.notifyError(`NetBird: ${ACTION_LABELS[action].replace('…', '')} failed`,
                     errorText(result, `netbird ${args.join(' ')} failed`));
+            }
         } catch (e) {
             if (!isCancelled(e))
-                logError(e, `NetBird: netbird ${args.join(' ')} failed`);
+                console.error(`NetBird: netbird ${args.join(' ')} failed:`, e);
         } finally {
             this._lifeCancellable.disconnect(lifeId);
             if (this._actionCancellable === cancellable) {
@@ -466,7 +468,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
 });
 
 const NetbirdIndicator = GObject.registerClass(
-class NetbirdIndicator extends QuickSettings.SystemIndicator {
+class NetbirdIndicatorImpl extends QuickSettings.SystemIndicator {
     _init(settings, extensionDir, extension) {
         super._init();
 
@@ -479,7 +481,8 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
         this._lastActionTime = null;
         this._debugEnabled = GLib.getenv('NETBIRD_DEBUG') === '1';
 
-        this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings), this._statusIcons, extension, this);
+        this._toggle = new NetbirdToggle(
+            settings, new NetbirdCli(settings), this._statusIcons, extension, this);
         this._toggle.connectObject(
             'notify::checked', () => this._syncIcon(),
             'notify::gicon', () => this._syncIcon(),

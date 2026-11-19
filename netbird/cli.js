@@ -5,7 +5,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {Status, errorText, parseProfileList, parseNetworks, isProfilesDisabled} from './parse.js';
+import {Status, errorText, parseProfileList, parseNetworks} from './parse.js';
 import {parseConfig, flagsFor} from './config.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
@@ -63,7 +63,7 @@ export class NetbirdCli {
      */
     async status(cancellable) {
         const result = await this.run(['status', '--json'], cancellable);
-        let data = null;
+        let data;
         try {
             data = result.stdout ? JSON.parse(result.stdout) : null;
         } catch {

@@ -136,7 +136,7 @@ export function createHomePage(model, window) {
         });
     });
 
-    const signalId = model.connect('changed', (state) => {
+    const signalId = model.connect('changed', state => {
         suppressConnection = true;
         connectionSwitch.active = state.status === Status.CONNECTED ||
                                    state.status === Status.CONNECTING;
@@ -147,7 +147,7 @@ export function createHomePage(model, window) {
 
         const data = state.data || {};
         const connected = state.status === Status.CONNECTED;
-        fqdnLabel.setText(connected ? (data.fqdn || '') : '');
+        fqdnLabel.setText(connected ? data.fqdn || '' : '');
         ipv4Label.setText(connected ? hostAddress(data.netbirdIp || '') : '');
         ipv6Label.setText(connected ? hostAddress(data.netbirdIpv6 || '') : '');
 

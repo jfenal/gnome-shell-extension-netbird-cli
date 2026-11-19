@@ -27,7 +27,9 @@ export function autoExtendLeadSeconds(warningMinutes) {
  * @param {string|null} state.lastAttemptDeadline - deadline of the last attempt
  * @returns {boolean}
  */
-export function autoExtendDue({enabled, connected, secondsLeft, leadSeconds, deadline, lastAttemptDeadline}) {
+export function autoExtendDue({
+    enabled, connected, secondsLeft, leadSeconds, deadline, lastAttemptDeadline,
+}) {
     return enabled && connected && secondsLeft !== null && secondsLeft > 0 &&
         secondsLeft <= leadSeconds && deadline !== lastAttemptDeadline;
 }

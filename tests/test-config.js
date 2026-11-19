@@ -67,8 +67,10 @@ check('21 settings', SETTINGS.length, 21);
 
 // mDMManagedFields uses the MDM policy key names (client/mdm/policy.go),
 // which differ from the protojson field names for some settings.
-const mdm = parseConfig(JSON.stringify({serverSSHAllowed: false, managementUrl: 'x',
-    mDMManagedFields: ['allowServerSSH', 'managementURL']}));
+const mdm = parseConfig(JSON.stringify({
+    serverSSHAllowed: false, managementUrl: 'x',
+    mDMManagedFields: ['allowServerSSH', 'managementURL'],
+}));
 check('MDM names map to setting keys',
     [mdm.managed.has('serverSSHAllowed'), mdm.managed.has('managementUrl')], [true, true]);
 

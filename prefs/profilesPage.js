@@ -49,9 +49,8 @@ export function createProfilesPage(model, window) {
         }
 
         // If we were connected, reconnect with the new profile
-        if (wasConnected) {
+        if (wasConnected)
             await model.run(['up']);
-        }
     });
 
     const profileGroup = new Adw.PreferencesGroup({
@@ -170,7 +169,7 @@ export function createProfilesPage(model, window) {
     }
     let profilesKey = null;
 
-    const signalId = model.connect('changed', (state) => {
+    const signalId = model.connect('changed', state => {
         profiles = state.profiles;
         wasConnected = state.status === Status.CONNECTED;
 

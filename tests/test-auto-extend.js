@@ -13,8 +13,10 @@ function check(name, actual, expected) {
     }
 }
 
-const due = {enabled: true, connected: true, secondsLeft: 600, leadSeconds: 1800,
-    deadline: 'D1', lastAttemptDeadline: null};
+const due = {
+    enabled: true, connected: true, secondsLeft: 600, leadSeconds: 1800,
+    deadline: 'D1', lastAttemptDeadline: null,
+};
 
 check('due within lead time', autoExtendDue(due), true);
 check('not when disabled', autoExtendDue({...due, enabled: false}), false);

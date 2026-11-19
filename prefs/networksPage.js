@@ -53,7 +53,7 @@ export function createNetworksPage(model, window) {
     const entries = new Map();
     let connected = false;
 
-    const signalId = model.connect('changed', (state) => {
+    const signalId = model.connect('changed', state => {
         connected = state.status === Status.CONNECTED;
         const resources = state.networks.filter(network => !network.isExitNode);
 

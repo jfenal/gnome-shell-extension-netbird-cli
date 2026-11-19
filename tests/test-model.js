@@ -39,7 +39,7 @@ class FakeCli {
         return {networks: [], disabled: false};
     }
 
-    async run(args, _cancellable) {
+    async run(_args, _cancellable) {
         return {ok: true, stdout: '', stderr: ''};
     }
 }
@@ -72,7 +72,9 @@ const cli2 = new FakeCli(
 
 const model2 = new WindowModel(cli2, 999);
 let state2 = null;
-model2.connect('changed', state => { state2 = state; });
+model2.connect('changed', state => {
+    state2 = state;
+});
 await model2.refresh();
 check('profiles null yields empty array', state2?.profiles, []);
 
@@ -85,7 +87,9 @@ const cli3 = new FakeCli(
 
 const model3 = new WindowModel(cli3, 999);
 let state3 = null;
-model3.connect('changed', state => { state3 = state; });
+model3.connect('changed', state => {
+    state3 = state;
+});
 await model3.refresh();
 check('profiles reject yields empty array', state3?.profiles, []);
 

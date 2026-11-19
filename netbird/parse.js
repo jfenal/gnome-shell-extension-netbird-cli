@@ -159,7 +159,7 @@ export function parsePeers(statusJson) {
 
     // Sort: Connected, Connecting, then others; then by name
     peers.sort((a, b) => {
-        const stateOrder = (state) => {
+        const stateOrder = state => {
             if (state === 'Connected')
                 return 0;
             if (state === 'Connecting')
@@ -210,7 +210,7 @@ export function parseNetworks(text) {
 
     for (const line of lines) {
         // Start of a network block
-        const idMatch = line.match(/^  - ID: (.+)$/);
+        const idMatch = line.match(/^ {2}- ID: (.+)$/);
         if (idMatch) {
             if (current)
                 networks.push(current);
@@ -229,7 +229,7 @@ export function parseNetworks(text) {
             continue;
 
         // Network field (CIDR)
-        const networkMatch = line.match(/^    Network: (.+)$/);
+        const networkMatch = line.match(/^ {4}Network: (.+)$/);
         if (networkMatch) {
             current.range = networkMatch[1];
             current.isExitNode = networkMatch[1] === '0.0.0.0/0' || networkMatch[1] === '::/0';
@@ -237,21 +237,21 @@ export function parseNetworks(text) {
         }
 
         // Domains field
-        const domainsMatch = line.match(/^    Domains: (.+)$/);
+        const domainsMatch = line.match(/^ {4}Domains: (.+)$/);
         if (domainsMatch) {
             current.domains = domainsMatch[1].split(',').map(d => d.trim());
             continue;
         }
 
         // Status field
-        const statusMatch = line.match(/^    Status: (.+)$/);
+        const statusMatch = line.match(/^ {4}Status: (.+)$/);
         if (statusMatch) {
             current.selected = statusMatch[1] === 'Selected';
             continue;
         }
 
         // Resolved IPs (individual lines)
-        const resolvedMatch = line.match(/^      \[.+?\]: (.+)$/);
+        const resolvedMatch = line.match(/^ {6}\[.+?\]: (.+)$/);
         if (resolvedMatch) {
             const ips = resolvedMatch[1].split(',').map(ip => ip.trim());
             current.resolvedIps.push(...ips);

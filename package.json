@@ -1,0 +1,12 @@
+{
+  "name": "gnome-shell-extension-netbird-cli",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "eslint extension.js prefs.js netbird prefs shell tests tools"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.9.1"
+  }
+}

@@ -73,7 +73,8 @@ export class VpnButtonGuard {
         if (!this._toggle)
             this._attach();
         if (!this._disconnecting) {
-            this._disconnecting = disconnectOtherVpns(this._toggle?._client, this._cancellable, this._interfaceName)
+            this._disconnecting = disconnectOtherVpns(
+                this._toggle?._client, this._cancellable, this._interfaceName)
                 .finally(() => {
                     this._disconnecting = null;
                 });
@@ -121,7 +122,8 @@ export class VpnButtonGuard {
         const guard = this;
         this._injections.overrideMethod(this._toggle, '_shouldHandleConnection', original =>
             function (connection) {
-                return !isNetBirdConnection(connection, guard._interfaceName) && original.call(this, connection);
+                return !isNetBirdConnection(connection, guard._interfaceName) &&
+                    original.call(this, connection);
             });
         for (const connection of [...this._toggle._items.keys()]) {
             if (isNetBirdConnection(connection, this._interfaceName))

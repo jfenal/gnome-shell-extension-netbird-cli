@@ -61,12 +61,13 @@ export function presentDebugBundleDialog(model, window) {
     dialog.add_response('create', 'Create');
     dialog.set_response_appearance('create', Adw.ResponseAppearance.SUGGESTED);
     dialog.connect('response', (_dialog, response) => {
-        if (response === 'create')
+        if (response === 'create') {
             void create(model, window, {
                 upload: upload.active,
                 anonymize: anonymize.active,
                 systemInfo: systemInfo.active,
             });
+        }
     });
     dialog.present(window);
 }

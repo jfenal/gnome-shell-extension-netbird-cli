@@ -124,7 +124,7 @@ export function createPeersPage(model, _window) {
     search.connect('search-changed', updateFilter);
     filter.connect('notify::selected', updateFilter);
 
-    const signalId = model.connect('changed', (state) => {
+    const signalId = model.connect('changed', state => {
         connected = state.status === Status.CONNECTED;
         currentPeers = parsePeers(state.data || {});
 

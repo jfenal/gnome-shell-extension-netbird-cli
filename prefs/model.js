@@ -81,10 +81,11 @@ export class WindowModel {
     start() {
         if (this._timeoutId)
             return;
-        this._timeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, this._intervalSeconds, () => {
-            this.refresh();
-            return GLib.SOURCE_CONTINUE;
-        });
+        this._timeoutId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT, this._intervalSeconds, () => {
+                this.refresh();
+                return GLib.SOURCE_CONTINUE;
+            });
         this.refresh();
     }
 
@@ -123,7 +124,8 @@ export class WindowModel {
                     data: null,
                     error: 'status call failed',
                 })),
-                this._cli.networks(this._cancellable).catch(() => ({networks: [], disabled: false})),
+                this._cli.networks(this._cancellable)
+                    .catch(() => ({networks: [], disabled: false})),
             ]);
 
             this._state = {

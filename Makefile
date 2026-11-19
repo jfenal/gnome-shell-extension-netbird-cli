@@ -1,7 +1,7 @@
 UUID := netbird-cli@jfenal.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
-.PHONY: smoke-container install uninstall schemas pack test nested enable disable prefs logs screenshot smoke rpm
+.PHONY: lint smoke-container install uninstall schemas pack test nested enable disable prefs logs screenshot smoke rpm
 
 install: schemas
 	mkdir -p $(dir $(INSTALL_DIR))
@@ -16,6 +16,14 @@ schemas:
 pack:
 	mkdir -p dist
 	gnome-extensions pack --force --out-dir=dist --extra-source=netbird --extra-source=shell --extra-source=prefs --extra-source=icons --extra-source=LICENSES .
+
+# ESLint (GNOME/GJS style, config from netbirdio/gnome-extension); needs npm.
+lint: node_modules
+	npx eslint extension.js prefs.js netbird prefs shell tests tools
+
+node_modules: package.json
+	npm install --no-audit --no-fund
+	touch node_modules
 
 test:
 	gjs -m tests/test-netbird.js

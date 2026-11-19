@@ -52,8 +52,9 @@ export function createDaemonSettingsPage(model, window) {
     bundleRow.connect('activated', () => presentDebugBundleDialog(model, window));
     diagnostics.add(bundleRow);
 
+    const isSuppressed = () => suppress;
     for (const setting of SETTINGS) {
-        const entry = createRow(setting, value => void save(setting, value), () => suppress);
+        const entry = createRow(setting, value => void save(setting, value), isSuppressed);
         rows.set(setting.key, entry);
         groups.get(setting.group).add(entry.row);
     }
@@ -156,9 +157,11 @@ function createRow(setting, onChange, suppressed) {
             if (!suppressed())
                 onChange(row.active);
         });
-        return {setting, row, set: value => {
-            row.active = value;
-        }};
+        return {
+            setting, row, set: value => {
+                row.active = value;
+            },
+        };
     }
 
     if (setting.type === 'uint') {
@@ -183,9 +186,11 @@ function createRow(setting, onChange, suppressed) {
                 GLib.Source.remove(sourceId);
             sourceId = 0;
         });
-        return {setting, row, set: value => {
-            row.value = value;
-        }};
+        return {
+            setting, row, set: value => {
+                row.value = value;
+            },
+        };
     }
 
     const row = new Adw.EntryRow({title: setting.title, show_apply_button: true});
@@ -193,7 +198,9 @@ function createRow(setting, onChange, suppressed) {
         if (!suppressed())
             onChange(row.text.trim());
     });
-    return {setting, row, set: value => {
-        row.text = value;
-    }};
+    return {
+        setting, row, set: value => {
+            row.text = value;
+        },
+    };
 }

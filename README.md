@@ -69,6 +69,7 @@ without reconfiguring the service. Trade-offs:
 ```sh
 make install     # compile schemas, symlink into ~/.local/share/gnome-shell/extensions
 make test        # unit tests (gjs)
+make lint        # ESLint, GNOME/GJS style (installs eslint with npm on first run)
 make nested      # try it in a nested shell window (Wayland, in-memory settings;
                  # uses the host NetworkManager: the VPN guard acts on real VPNs)
 make enable      # enable in your session (log out/in first on Wayland)
