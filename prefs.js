@@ -42,8 +42,22 @@ export default class NetbirdPreferences extends ExtensionPreferences {
         window.add(settingsPage);
         window.add(extensionPage);
 
+        // The panel menu sets `prefs-page` before opening preferences. Handle
+        // it now (fresh window) and on change (window already open).
+        const menuPages = {home: homePage, extension: extensionPage};
+        const showRequestedPage = () => {
+            const page = menuPages[settings.get_string('prefs-page')];
+            if (!page)
+                return;
+            settings.set_string('prefs-page', '');
+            window.set_visible_page(page);
+        };
+        const pageChangedId = settings.connect('changed::prefs-page', showRequestedPage);
+        showRequestedPage();
+
         // Wire model lifecycle to window
         window.connect('close-request', () => {
+            settings.disconnect(pageChangedId);
             model.stop();
         });
 

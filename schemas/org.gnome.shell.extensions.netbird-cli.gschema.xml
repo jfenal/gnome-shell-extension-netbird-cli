@@ -31,5 +31,10 @@
       <summary>Manage GNOME VPN while NetBird is connected</summary>
       <description>Disable GNOME's VPN button while NetBird is connected, disconnect other VPNs before connecting, and hide NetBird's wt0 interface from GNOME's VPN list.</description>
     </key>
+    <key name="prefs-page" type="s">
+      <default>''</default>
+      <summary>Preferences page to show on open (internal)</summary>
+      <description>Set by the panel menu before opening preferences; the preferences window switches to this page and resets the key.</description>
+    </key>
   </schema>
 </schemalist>

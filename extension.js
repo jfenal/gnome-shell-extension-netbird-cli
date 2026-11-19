@@ -103,11 +103,17 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
         });
         this._copyIpItem.visible = false;
         this.menu.addAction('Refresh', () => this.refresh());
-        this._openItem = this.menu.addAction('Open NetBird', () => {
-            Main.panel.closeQuickSettings();
-            this._extension.openPreferences();
-        });
+        this._openItem = this.menu.addAction('Open NetBird', () => this._openPrefs('home'));
         this._openItem.visible = Main.sessionMode.allowSettings;
+        this._prefsItem = this.menu.addAction('Extension Settings', () => this._openPrefs('extension'));
+        this._prefsItem.visible = Main.sessionMode.allowSettings;
+    }
+
+    _openPrefs(page) {
+        Main.panel.closeQuickSettings();
+        // prefs.js watches this key and switches to the requested page.
+        this._settings.set_string('prefs-page', page);
+        this._extension.openPreferences();
     }
 
     get isConnected() {
