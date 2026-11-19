@@ -23,6 +23,7 @@ srpm:
 	src=$$(mktemp -d); \
 	git archive --format=tar.gz --prefix="$$name-$$version/" \
 	    -o "$$src/$$name-$$version.tar.gz" HEAD; \
-	sed "s/%{?snapinfo}/$$snapinfo/" "$(spec)" > "$$src/$(spec)"; \
+	pkgspec="$$src/$$(basename "$(spec)")"; \
+	sed "s/%{?snapinfo}/$$snapinfo/" "$(spec)" > "$$pkgspec"; \
 	TZ=UTC rpmbuild -bs --define "_sourcedir $$src" --define "_srcrpmdir $(outdir)" \
-	    "$$src/$(spec)"
+	    "$$pkgspec"
