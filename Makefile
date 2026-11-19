@@ -15,11 +15,12 @@ schemas:
 
 pack:
 	mkdir -p dist
-	gnome-extensions pack --force --out-dir=dist --extra-source=netbird --extra-source=shell --extra-source=icons --extra-source=LICENSES .
+	gnome-extensions pack --force --out-dir=dist --extra-source=netbird --extra-source=shell --extra-source=prefs --extra-source=icons --extra-source=LICENSES .
 
 test:
 	gjs -m tests/test-netbird.js
 	gjs -m tests/test-icons.js
+	gjs -m tests/test-model.js
 
 enable:
 	gnome-extensions enable $(UUID)

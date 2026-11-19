@@ -33,7 +33,7 @@ switches profiles, warns before the session expires and can extend it.
 install -d %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}
 install -pm 0644 metadata.json extension.js prefs.js \
     %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}/
-cp -pr netbird shell icons %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}/
+cp -pr netbird shell prefs icons %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}/
 install -Dpm 0644 schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml \
     %{buildroot}%{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 
@@ -41,6 +41,7 @@ install -Dpm 0644 schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml \
 glib-compile-schemas --strict --dry-run schemas
 gjs -m tests/test-netbird.js
 gjs -m tests/test-icons.js
+gjs -m tests/test-model.js
 
 %files
 %license LICENSE
