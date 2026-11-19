@@ -21,7 +21,7 @@ needed. Click the toggle again while "Connecting…" to abort.
 
 ## Requirements
 
-- GNOME Shell 46–50
+- GNOME Shell 46–51 (Fedora 40–45)
 - `netbird` CLI, daemon running, and `/var/run/netbird.sock` accessible by
   your user
 
