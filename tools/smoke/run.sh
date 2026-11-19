@@ -28,7 +28,7 @@ glib-compile-schemas "$REPO/schemas"
 export GSETTINGS_BACKEND=memory XDG_DATA_HOME="$WORK/data" \
     PATH="$HERE/bin:$PATH" SMOKE_STATE="$WORK/state" \
     WAYLAND_DISPLAY="netbird-smoke-$$" GDK_BACKEND=wayland \
-    WORK OUT UUID
+    NETBIRD_PREFS_PAGE_FILE="$WORK/prefs-page" WORK OUT UUID
 unset DISPLAY
 
 fail() {

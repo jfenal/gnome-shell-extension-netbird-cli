@@ -103,7 +103,7 @@ wait_for 10 "tile checked before prefs" js_true "$TILE.checked === true"
 calls_before=$(wc -l < "$CALLS")
 # Screenshot each page: Home, Peers, Networks, Profiles
 for page in Home Peers Networks Profiles; do
-    export NETBIRD_PREFS_PAGE="$page"
+    echo "$page" > "$NETBIRD_PREFS_PAGE_FILE"
     gnome-extensions prefs "$UUID"
     wait_for 20 "the prefs window ($page)" js_true "!!$PREFS"
     wait_for 10 "prefs CLI calls ($page)" sh -c "[ \$(wc -l < '$CALLS') -gt $calls_before ]"
@@ -113,7 +113,7 @@ for page in Home Peers Networks Profiles; do
     wait_for 10 "prefs window closed ($page)" js_true "!$PREFS"
     calls_before=$(wc -l < "$CALLS")
 done
-unset NETBIRD_PREFS_PAGE
+rm -f "$NETBIRD_PREFS_PAGE_FILE"
 
 # Check that networks list was called (since we were connected)
 wait_for 5 "networks list in calls.log" sh -c "grep -qx 'networks list' '$CALLS'"

@@ -22,7 +22,7 @@ const FILTER_DISCONNECTED = 2;
 export function createPeersPage(model, _window) {
     const page = new Adw.PreferencesPage({
         title: 'Peers',
-        iconName: 'network-workgroup-symbolic',
+        iconName: 'network-server-symbolic',
     });
 
     const content = new Gtk.Box({

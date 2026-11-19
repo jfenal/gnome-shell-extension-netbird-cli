@@ -40,9 +40,10 @@ export default class NetbirdPreferences extends ExtensionPreferences {
 
         model.start();
 
-        // Support NETBIRD_PREFS_PAGE env var for smoke tests
-        // Set the visible page after the window is shown
-        const targetPage = GLib.getenv('NETBIRD_PREFS_PAGE');
+        // Smoke test only (tools/smoke): the prefs process is D-Bus activated
+        // and inherits the bus environment, so the page name is read from a
+        // file whose path was exported before the bus started.
+        const targetPage = readSmokePage();
         if (targetPage) {
             const pageMap = {
                 'Home': homePage,
@@ -58,5 +59,17 @@ export default class NetbirdPreferences extends ExtensionPreferences {
                 });
             }
         }
+    }
+}
+
+function readSmokePage() {
+    const path = GLib.getenv('NETBIRD_PREFS_PAGE_FILE');
+    if (!path)
+        return null;
+    try {
+        const [, bytes] = GLib.file_get_contents(path);
+        return new TextDecoder().decode(bytes).trim() || null;
+    } catch {
+        return null;
     }
 }
