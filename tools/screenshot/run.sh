@@ -8,7 +8,7 @@ set -eu
 
 REPO=$(cd "$(dirname "$0")/../.." && pwd)
 HERE="$REPO/tools/screenshot"
-UUID=netbird@jfenal.github.io
+UUID=netbird-cli@jfenal.github.io
 OUT="$REPO/screenshots/quick-settings.png"
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT

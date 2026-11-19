@@ -1,12 +1,12 @@
-%global uuid netbird@jfenal.github.io
+%global uuid netbird-cli@jfenal.github.io
 
-Name:           gnome-shell-extension-netbird
+Name:           gnome-shell-extension-netbird-cli
 Version:        0.1.0
 Release:        1%{?dist}
 Summary:        GNOME Shell Quick Settings toggle for NetBird
 
 License:        GPL-2.0-or-later
-URL:            https://github.com/jfenal/gnome-shell-extension-netbird
+URL:            https://github.com/jfenal/gnome-shell-extension-netbird-cli
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 
 BuildArch:      noarch
@@ -33,8 +33,8 @@ switches profiles, warns before the session expires and can extend it.
 install -d %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}
 install -pm 0644 metadata.json extension.js netbird.js prefs.js \
     %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}/
-install -Dpm 0644 schemas/org.gnome.shell.extensions.netbird.gschema.xml \
-    %{buildroot}%{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird.gschema.xml
+install -Dpm 0644 schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml \
+    %{buildroot}%{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 
 %check
 glib-compile-schemas --strict --dry-run schemas
@@ -44,7 +44,7 @@ gjs -m tests/test-netbird.js
 %license LICENSE
 %doc README.md
 %{_datadir}/gnome-shell/extensions/%{uuid}/
-%{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird.gschema.xml
+%{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 
 %changelog
 * Thu Nov 19 2026 Jérôme Fenal <jfenal@redhat.com> - 0.1.0-1

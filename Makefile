@@ -1,4 +1,4 @@
-UUID := netbird@jfenal.github.io
+UUID := netbird-cli@jfenal.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
 .PHONY: install uninstall schemas pack test nested enable disable prefs logs screenshot rpm

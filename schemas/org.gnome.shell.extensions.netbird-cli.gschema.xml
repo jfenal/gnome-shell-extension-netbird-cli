@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-  <schema id="org.gnome.shell.extensions.netbird" path="/org/gnome/shell/extensions/netbird/">
+  <schema id="org.gnome.shell.extensions.netbird-cli" path="/org/gnome/shell/extensions/netbird-cli/">
     <key name="poll-interval" type="u">
       <default>5</default>
       <range min="1" max="300"/>

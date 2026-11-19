@@ -1,4 +1,4 @@
-# NetBird GNOME Shell extension
+# NetBird CLI GNOME Shell extension
 
 Quick Settings toggle to connect/disconnect [NetBird](https://netbird.io),
 driven by the `netbird` CLI.

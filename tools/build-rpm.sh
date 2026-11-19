@@ -11,7 +11,7 @@ set -eu
 REPO=$(cd "$(dirname "$0")/.." && pwd)
 cd "$REPO"
 
-SPEC=gnome-shell-extension-netbird.spec
+SPEC=gnome-shell-extension-netbird-cli.spec
 NAME=$(rpmspec -q --srpm --qf '%{name}' "$SPEC")
 VERSION=$(rpmspec -q --srpm --qf '%{version}' "$SPEC")
 TOP="$REPO/dist/rpmbuild"
