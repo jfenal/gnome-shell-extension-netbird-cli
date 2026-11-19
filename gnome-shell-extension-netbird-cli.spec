@@ -1,7 +1,7 @@
 %global uuid netbird-cli@jfenal.github.io
 
 Name:           gnome-shell-extension-netbird-cli
-Version:        0.1.0
+Version:        0.2.0
 Release:        1%{?dist}
 Summary:        GNOME Shell Quick Settings toggle for NetBird
 
@@ -56,5 +56,17 @@ gjs -m tests/test-auto-extend.js
 %{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 
 %changelog
+* Thu Nov 19 2026 Jérôme Fenal <jfenal@redhat.com> - 0.2.0-1
+- NetBird window: Home, Peers, Networks, Profiles, Settings pages
+- Exit node and network resource selection
+- Profile management (add, rename, sign out, remove)
+- NetBird daemon settings via netbird debug config / netbird up
+- Debug bundle creation
+- GNOME VPN guard while connected
+- Optional automatic SSO session renewal
+- Copy IP, IPv6, NetBird state icons, session-expired notice
+- GNOME Shell 51 (Fedora 45)
+- Relicensed GPL-3.0-or-later
+
 * Thu Nov 19 2026 Jérôme Fenal <jfenal@redhat.com> - 0.1.0-1
 - Initial package
