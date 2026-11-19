@@ -44,6 +44,8 @@ state_ok() {
     esac
 }
 screenshot() {
+    # SMOKE_SCREENSHOTS=0: containers without GPU return empty captures.
+    [ "${SMOKE_SCREENSHOTS:-1}" = 0 ] && return 0
     gdbus call --session --dest org.gnome.Shell.Screenshot \
         --object-path /org/gnome/Shell/Screenshot \
         --method org.gnome.Shell.Screenshot.Screenshot false false "$OUT/$1" >/dev/null ||

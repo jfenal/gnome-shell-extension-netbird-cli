@@ -78,4 +78,5 @@ make pack        # build dist/*.zip for extensions.gnome.org
 make rpm         # build dist/*.rpm (noarch + src) from the current tree
 make screenshot  # regenerate screenshots/quick-settings.png (headless, demo data)
 make smoke       # nested headless Wayland shell, mock CLI, fails on JS errors
+make smoke-container FEDORA=45  # same smoke test on Fedora 45 / GNOME 51 in podman
 ```

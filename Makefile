@@ -1,7 +1,7 @@
 UUID := netbird-cli@jfenal.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
-.PHONY: install uninstall schemas pack test nested enable disable prefs logs screenshot smoke rpm
+.PHONY: smoke-container install uninstall schemas pack test nested enable disable prefs logs screenshot smoke rpm
 
 install: schemas
 	mkdir -p $(dir $(INSTALL_DIR))
@@ -57,3 +57,9 @@ smoke:
 # Build dist/*.rpm (noarch + src) from the current tree.
 rpm:
 	tools/build-rpm.sh
+
+# Same smoke test on another Fedora/GNOME release, in podman (no screenshots).
+FEDORA ?= 45
+smoke-container:
+	podman build -t netbird-cli-smoke:$(FEDORA) --build-arg FEDORA=$(FEDORA) tools/smoke
+	podman run --rm --userns=keep-id --user "$$(id -u):$$(id -g)" -v "$(CURDIR)":/src:Z netbird-cli-smoke:$(FEDORA)

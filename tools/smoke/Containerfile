@@ -1,0 +1,18 @@
+# Run `make smoke` on another Fedora / GNOME release in a container:
+#   podman build -t netbird-cli-smoke:45 --build-arg FEDORA=45 tools/smoke
+#   podman run --rm --userns=keep-id --user "$(id -u):$(id -g)" -v "$PWD":/src:Z netbird-cli-smoke:45
+# The container has no system bus, so the nested Shell sees no host
+# NetworkManager.
+ARG FEDORA=45
+FROM registry.fedoraproject.org/fedora:${FEDORA}
+RUN dnf -y install --setopt=install_weak_deps=False \
+        gnome-shell gjs glib2 dbus-daemon dbus-tools make ImageMagick \
+        mesa-dri-drivers adwaita-icon-theme gnome-extensions-app \
+        rpm-build findutils procps-ng && dnf clean all
+RUN useradd -m tester
+USER tester
+ENV XDG_RUNTIME_DIR=/tmp/runtime HOME=/tmp/home SMOKE_SCREENSHOTS=0
+WORKDIR /src
+# No real system bus in the container: a private stand-in bus satisfies
+# gnome-shell's connection without any system services behind it.
+CMD ["sh", "-c", "mkdir -p -m 700 $XDG_RUNTIME_DIR $HOME && dbus-daemon --session --fork --address=unix:path=$XDG_RUNTIME_DIR/system_bus && export DBUS_SYSTEM_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/system_bus && gnome-shell --version && make test && make smoke"]
