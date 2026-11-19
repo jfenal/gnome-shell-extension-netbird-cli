@@ -181,16 +181,6 @@ export function createHomePage(model, window) {
 }
 
 async function selectExitNode(id, model, window) {
-    // Collect all exit node IDs from current state
-    const allExitIds = [];
-    for (const signalValue of model._signals.values()) {
-        // We can't easily get the last state; instead run networks deselect for all
-        // current exit nodes, then select the new one
-        break;
-    }
-
-    // Simpler approach: if id is empty, deselect all exit nodes
-    // Otherwise, deselect all exit nodes then select the new one with --append
     const state = model._state;
     const exits = state.networks.filter(network => network.isExitNode);
 

@@ -144,6 +144,37 @@ check('parseNetworks exit node', {
 check('parseNetworks empty', parseNetworks('No networks available.\n'), []);
 check('parseNetworks id with spaces preserved', parseNetworks(networksFixture)[0].id, 'office lan');
 
+// Edge cases from real CLI output
+const domainNoIPs = `Available Networks:
+
+  - ID: internal
+    Domains: app.example.com
+    Status: Selected
+    Resolved IPs: -
+`;
+const withNoIPs = parseNetworks(domainNoIPs);
+check('parseNetworks domain with Resolved IPs: -', {
+    id: withNoIPs[0].id,
+    domains: withNoIPs[0].domains,
+    resolvedIps: withNoIPs[0].resolvedIps,
+    selected: withNoIPs[0].selected,
+}, {id: 'internal', domains: ['app.example.com'], resolvedIps: [], selected: true});
+
+const headerAndBlanks = `Available Networks:
+
+  - ID: net1
+    Network: 10.0.0.0/8
+    Status: Selected
+
+  - ID: net2
+    Network: 172.16.0.0/12
+    Status: Not Selected
+`;
+const multiNet = parseNetworks(headerAndBlanks);
+check('parseNetworks with header and blank lines', multiNet.length, 2);
+check('parseNetworks blank lines do not create bogus entries', multiNet[0].id, 'net1');
+check('parseNetworks second network parsed', multiNet[1].id, 'net2');
+
 // STATUS_LABELS and statusLabel tests
 check('statusLabel Connected', statusLabel('Connected'), 'Connected');
 check('statusLabel Idle', statusLabel('Idle'), 'Disconnected');
