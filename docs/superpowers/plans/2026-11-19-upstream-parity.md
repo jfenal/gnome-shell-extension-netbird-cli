@@ -285,6 +285,33 @@ Behaviour (upstream): while connected, GNOME's VPN quick toggle and its menu are
 - [ ] **Step 2:** `make nested` with an NM VPN profile: connecting NetBird drops the VPN; GNOME VPN toggle greyed; disconnecting or disabling the extension restores it; 10× `gnome-extensions disable/enable` leaves no stale state.
 - [ ] **Step 3:** Commit `feat: guard GNOME VPN button while connected`.
 
+### Task 13: Auto-extend session
+
+Added at the user's request. When enabled and NetBird is connected with an SSO session deadline, renew the session automatically before it expires instead of only warning.
+
+CLI fact (netbird `client/cmd/login.go`): `netbird login --extend` calls `RequestExtendAuthSession`, opens the IdP URL in the browser, then blocks in `WaitExtendAuthSession` until the browser flow completes. If the user is still signed in at the IdP the flow completes without input (a browser tab opens and finishes); otherwise the user must sign in. There is no silent renewal.
+
+**Files:**
+- Create: `shell/autoExtend.js` (pure decision helper)
+- Modify: `extension.js` (`_checkExpiry`), `schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml`, `prefs/extensionPage.js`
+- Test: `tests/test-auto-extend.js` (added to `make test` and spec `%check`)
+
+**Interfaces:**
+- Produces: `autoExtendDue({enabled: boolean, connected: boolean, secondsLeft: number|null, leadSeconds: number, deadline: string, lastAttemptDeadline: string|null}): boolean` — true iff `enabled && connected && secondsLeft !== null && secondsLeft > 0 && secondsLeft <= leadSeconds && deadline !== lastAttemptDeadline`.
+
+Behaviour:
+- New key `auto-extend` (b, default `false`); Extension page switch "Auto-extend session", subtitle "Renew the SSO session before it expires. Opens your browser; usually no input is needed if you are still signed in to your identity provider."
+- Lead time = `expiry-warning-minutes` (when 0, use 10 minutes for auto-extend).
+- When `autoExtendDue(...)`: record `lastAttemptDeadline = deadline` (one attempt per deadline, never a retry loop), run `_runAction('extend')` (`login --extend`) with a 5-minute timeout (cancel → `force_exit`). On success: notify "NetBird session extended" with the new expiry (`formatLocal` of the refreshed `sessionExpiresAt`). On failure or timeout: fall back to the existing warning notification with its "Extend session" action.
+- While auto-extend is on, the plain expiry warning is not shown for that deadline unless the attempt failed.
+- Extensions are disabled on the lock screen, so no attempt happens while locked; the next poll after unlock handles it if still within the lead time.
+
+- [ ] **Step 1: Failing tests:** `autoExtendDue` true for `{enabled:true, connected:true, secondsLeft:600, leadSeconds:1800, deadline:'D1', lastAttemptDeadline:null}`; false when `enabled:false`; false when `connected:false`; false when `secondsLeft:3600`; false when `secondsLeft:0`; false when `secondsLeft:null`; false when `lastAttemptDeadline:'D1'`; true again when `deadline:'D2', lastAttemptDeadline:'D1'`.
+- [ ] **Step 2:** `make test` → FAIL.
+- [ ] **Step 3:** Implement helper, schema key, prefs switch, `_checkExpiry` integration with timeout and fallback.
+- [ ] **Step 4:** `make test && make smoke` → PASS. Extend the smoke mock: `status --json` `sessionExpiresAt` within the lead time when `$SMOKE_STATE/expiring` exists; `login --extend` moves it +12 h; smoke step sets `auto-extend` true (gsettings in the nested session) and asserts `calls.log` contains `login --extend` exactly once after two polls.
+- [ ] **Step 5:** Commit `feat: auto-extend SSO session`.
+
 ### Task 12: Docs, screenshots, release
 
 **Files:**

@@ -182,8 +182,11 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         section.addMenuItem(loading);
 
         let profiles = null;
+        let result = null;
         try {
-            profiles = await this._cli.profiles(this._lifeCancellable);
+            result = await this._cli.run(['profile', 'list', '--show-id'], this._lifeCancellable);
+            if (result.ok)
+                profiles = await this._cli.profiles(this._lifeCancellable);
         } catch (e) {
             if (isCancelled(e))
                 return;
@@ -192,6 +195,16 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         if (this._lifeCancellable.is_cancelled())
             return;
 
+        // Hide submenu if profiles are disabled
+        const profilesDisabled = result && !result.ok &&
+            (result.stderr.includes('profiles are disabled') ||
+             result.stdout.includes('profiles are disabled'));
+        if (profilesDisabled) {
+            this._profileMenu.visible = false;
+            return;
+        }
+
+        this._profileMenu.visible = true;
         section.removeAll();
         if (!profiles?.length) {
             section.addMenuItem(new PopupMenu.PopupMenuItem(

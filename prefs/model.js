@@ -95,22 +95,31 @@ export class WindowModel {
         this._refreshing = true;
 
         try {
-            const [statusResult, profilesResult, networksResult] = await Promise.all([
+            // Capture raw profile list result to detect disabled state
+            const profileListResult = await this._cli.run(['profile', 'list', '--show-id'], this._cancellable)
+                .catch(() => ({ok: false, stdout: '', stderr: ''}));
+            const profilesDisabled = !profileListResult.ok &&
+                (profileListResult.stderr.includes('profiles are disabled') ||
+                 profileListResult.stdout.includes('profiles are disabled'));
+
+            const [statusResult, networksResult] = await Promise.all([
                 this._cli.status(this._cancellable).catch(() => ({
                     status: 'Unavailable',
                     data: null,
                     error: 'status call failed',
                 })),
-                this._cli.profiles(this._cancellable).catch(() => null),
                 this._cli.networks(this._cancellable).catch(() => ({networks: [], disabled: false})),
             ]);
 
             this._state = {
                 status: statusResult.status,
                 data: statusResult.data,
-                profiles: profilesResult ?? [],
+                profiles: await this._cli.profiles(this._cancellable).catch(() => []) ?? [],
                 networks: networksResult.networks,
-                features: {networksDisabled: networksResult.disabled},
+                features: {
+                    networksDisabled: networksResult.disabled,
+                    profilesDisabled,
+                },
             };
 
             this._emit('changed', this._state);

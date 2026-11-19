@@ -5,7 +5,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {Status, errorText, parseProfileList, parseNetworks} from './parse.js';
+import {Status, errorText, parseProfileList, parseNetworks, isProfilesDisabled} from './parse.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
@@ -127,5 +127,50 @@ export class NetbirdCli {
      */
     async deselectNetworks(ids, cancellable) {
         return this.run(['networks', 'deselect', ...ids], cancellable);
+    }
+
+    /**
+     * Add a new profile.
+     *
+     * @param {string} name - profile name
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
+     */
+    async addProfile(name, cancellable) {
+        return this.run(['profile', 'add', name], cancellable);
+    }
+
+    /**
+     * Rename a profile.
+     *
+     * @param {string} id - profile ID
+     * @param {string} newName - new name
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
+     */
+    async renameProfile(id, newName, cancellable) {
+        return this.run(['profile', 'rename', id, newName], cancellable);
+    }
+
+    /**
+     * Remove a profile.
+     *
+     * @param {string} id - profile ID
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
+     */
+    async removeProfile(id, cancellable) {
+        return this.run(['profile', 'remove', id], cancellable);
+    }
+
+    /**
+     * Logout from a profile.
+     *
+     * @param {string} id - profile ID
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
+     */
+    async logout(id, cancellable) {
+        return this.run(['logout', '--profile', id], cancellable);
     }
 }

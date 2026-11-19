@@ -1,7 +1,7 @@
 // Run with: gjs -m tests/test-netbird.js
 import GLib from 'gi://GLib';
 import System from 'system';
-import {parseProfileList, parsePeers, secondsUntil, formatLocal, errorText, hostAddress, parseNetworks, STATUS_LABELS, statusLabel} from '../netbird/parse.js';
+import {parseProfileList, parsePeers, secondsUntil, formatLocal, errorText, hostAddress, parseNetworks, isProfilesDisabled, STATUS_LABELS, statusLabel} from '../netbird/parse.js';
 
 let failures = 0;
 function check(name, actual, expected) {
@@ -182,6 +182,11 @@ check('statusLabel NeedsLogin', statusLabel('NeedsLogin'), 'Login required');
 check('statusLabel unknown', statusLabel('UnknownState'), 'UnknownState');
 check('STATUS_LABELS.Connected', STATUS_LABELS.Connected, 'Connected');
 check('STATUS_LABELS.Idle', STATUS_LABELS.Idle, 'Disconnected');
+
+// isProfilesDisabled tests
+check('isProfilesDisabled stderr', isProfilesDisabled({ok: false, stdout: '', stderr: 'Error: profiles are disabled, you cannot use this feature without profiles enabled'}), true);
+check('isProfilesDisabled stdout', isProfilesDisabled({ok: false, stdout: 'profiles are disabled', stderr: ''}), true);
+check('isProfilesDisabled neither', isProfilesDisabled({ok: true, stdout: 'ID  NAME  ACTIVE', stderr: ''}), false);
 
 if (failures)
     System.exit(1);

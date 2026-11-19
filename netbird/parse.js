@@ -176,6 +176,17 @@ export function parsePeers(statusJson) {
 }
 
 /**
+ * Check if a CLI result indicates profiles are disabled.
+ *
+ * @param {{ok: boolean, stdout: string, stderr: string}} result - CLI result
+ * @returns {boolean} true if profiles are disabled
+ */
+export function isProfilesDisabled(result) {
+    return result.stderr.includes('profiles are disabled') ||
+           result.stdout.includes('profiles are disabled');
+}
+
+/**
  * Parse `netbird networks list` output.
  *
  * Format: blocks starting with `  - ID: <id>`, then either:
