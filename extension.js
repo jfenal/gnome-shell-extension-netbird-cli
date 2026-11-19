@@ -14,11 +14,7 @@ import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js'
 
 import {NetbirdCli, Status} from './netbird/cli.js';
 import {errorText, formatLocal, secondsUntil} from './netbird/parse.js';
-
-const ICON_CONNECTED = 'network-vpn-symbolic';
-const ICON_CONNECTING = 'network-vpn-acquiring-symbolic';
-const ICON_DISCONNECTED = 'network-vpn-disabled-symbolic';
-const ICON_ERROR = 'network-vpn-no-route-symbolic';
+import {StatusIcons} from './shell/icons.js';
 
 const STATUS_LABELS = {
     [Status.CONNECTED]: 'Connected',
@@ -44,15 +40,16 @@ function isCancelled(e) {
 
 const NetbirdToggle = GObject.registerClass(
 class NetbirdToggle extends QuickSettings.QuickMenuToggle {
-    _init(settings, cli) {
+    _init(settings, cli, statusIcons) {
         super._init({
             title: 'NetBird',
-            iconName: ICON_DISCONNECTED,
+            gicon: statusIcons.forState('Idle'),
             toggleMode: false,
         });
 
         this._settings = settings;
         this._cli = cli;
+        this._statusIcons = statusIcons;
         this._status = Status.UNAVAILABLE;
         this._data = null;
         this._lastError = null;
@@ -69,7 +66,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _buildMenu() {
-        this.menu.setHeader(ICON_DISCONNECTED, 'NetBird', '');
+        this.menu.setHeader(this._statusIcons.forState('Idle'), 'NetBird', '');
 
         this._infoSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._infoSection);
@@ -123,39 +120,28 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
     _sync() {
         const data = this._data;
         const statusLabel = STATUS_LABELS[this._status] ?? this._status;
-        let iconName;
+        let state;
         let subtitle;
 
         if (this._pendingAction) {
-            iconName = ICON_CONNECTING;
+            state = 'Connecting';
             subtitle = ACTION_LABELS[this._pendingAction];
         } else {
-            switch (this._status) {
-            case Status.CONNECTED:
-                iconName = ICON_CONNECTED;
-                break;
-            case Status.CONNECTING:
-                iconName = ICON_CONNECTING;
-                break;
-            case Status.IDLE:
-                iconName = ICON_DISCONNECTED;
-                break;
-            default:
-                iconName = ICON_ERROR;
-            }
+            state = this._status;
             subtitle = statusLabel;
             if (this.isConnected && data?.peers)
                 subtitle = `${data.peers.connected}/${data.peers.total} peers`;
         }
 
+        const gicon = this._statusIcons.forState(state);
         this.set({
             checked: this.isConnected || this._pendingAction === 'up',
-            iconName,
+            gicon,
             subtitle,
         });
 
         const profile = data?.profileName;
-        this.menu.setHeader(iconName, 'NetBird', profile ? `${statusLabel} · ${profile}` : statusLabel);
+        this.menu.setHeader(gicon, 'NetBird', profile ? `${statusLabel} · ${profile}` : statusLabel);
 
         const connected = this.isConnected;
         const expiry = connected ? formatLocal(data?.sessionExpiresAt) : null;
@@ -246,7 +232,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         if (!this._notificationSource) {
             this._notificationSource = new MessageTray.Source({
                 title: 'NetBird',
-                iconName: ICON_CONNECTED,
+                icon: this._statusIcons.appIcon,
             });
             this._notificationSource.connectObject('destroy', () => {
                 this._notificationSource = null;
@@ -331,18 +317,19 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
 
 const NetbirdIndicator = GObject.registerClass(
 class NetbirdIndicator extends QuickSettings.SystemIndicator {
-    _init(settings) {
+    _init(settings, extensionDir) {
         super._init();
 
         this._settings = settings;
+        this._statusIcons = new StatusIcons(extensionDir);
         this._icon = this._addIndicator();
-        this._icon.iconName = ICON_CONNECTED;
+        this._icon.gicon = this._statusIcons.forState('Connected');
         this._icon.visible = false;
 
-        this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings));
+        this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings), this._statusIcons);
         this._toggle.connectObject(
             'notify::checked', () => this._syncIcon(),
-            'notify::icon-name', () => this._syncIcon(),
+            'notify::gicon', () => this._syncIcon(),
             this);
         this.quickSettingsItems.push(this._toggle);
 
@@ -371,7 +358,7 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
     }
 
     _syncIcon() {
-        this._icon.iconName = this._toggle.iconName;
+        this._icon.gicon = this._toggle.gicon;
         this._icon.visible = this._toggle.checked && this._settings.get_boolean('show-panel-icon');
     }
 
@@ -389,7 +376,7 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
 export default class NetbirdExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
-        this._indicator = new NetbirdIndicator(this._settings);
+        this._indicator = new NetbirdIndicator(this._settings, this.dir);
         Main.panel.statusArea.quickSettings.addExternalIndicator(this._indicator);
     }
 
