@@ -1,0 +1,201 @@
+#!/bin/sh
+# Stateful mock netbird CLI for the smoke test (tools/smoke/run.sh).
+# State lives in $SMOKE_STATE (a directory); every call is appended to
+# $SMOKE_STATE/calls.log, one line per invocation, arguments space-joined.
+set -eu
+
+S=${SMOKE_STATE:?SMOKE_STATE not set}
+mkdir -p "$S"
+echo "$*" >> "$S/calls.log"
+
+# First call: initial state (disconnected, two profiles, three networks).
+if [ ! -f "$S/daemon" ]; then
+    echo Idle > "$S/daemon"
+    printf 'default\tdefault\na1b2c3d4\twork\n' > "$S/profiles"   # id<TAB>name
+    echo a1b2c3d4 > "$S/active"
+    # id<TAB>kind<TAB>range<TAB>selected
+    printf 'office-lan\tnet\t10.10.0.0/16\t1\n' > "$S/networks"
+    printf 'intranet\tdom\tgit.example.com, wiki.example.com\t0\n' >> "$S/networks"
+    printf 'exit-fr\tnet\t0.0.0.0/0\t0\n' >> "$S/networks"
+fi
+
+die() { echo "$*" >&2; exit 1; }
+
+# Profile id for an id or a name, or empty.
+profile_id() {
+    awk -F '\t' -v k="$1" '$1 == k || $2 == k { print $1; exit }' "$S/profiles"
+}
+
+status_json() {
+    daemon=$(cat "$S/daemon")
+    active=$(cat "$S/active")
+    profile=$(awk -F '\t' -v k="$active" '$1 == k { print $2 }' "$S/profiles")
+    exp=$(date -u -d '+9 hours' +%Y-%m-%dT%H:%M:%SZ)
+    handshake=$(date -u -d '-5 minutes' +%Y-%m-%dT%H:%M:%SZ)
+    if [ "$daemon" = Connected ]; then
+        peer=Connected connected=1 ip=100.92.14.7/16 ip6=fd00:4e42::7 fqdn=laptop.netbird.cloud
+    else
+        peer=Idle connected=0 ip='' ip6='' fqdn=''
+    fi
+    cat <<JSON
+{
+  "daemonStatus": "$daemon",
+  "netbirdIp": "$ip",
+  "netbirdIpv6": "$ip6",
+  "fqdn": "$fqdn",
+  "profileName": "$profile",
+  "peers": {
+    "total": 2,
+    "connected": $connected,
+    "details": [
+      {
+        "fqdn": "server.netbird.cloud",
+        "netbirdIp": "100.92.1.1/16",
+        "netbirdIpv6": "fd00:4e42::1/64",
+        "status": "$peer",
+        "connectionType": "P2P",
+        "latency": 15000000,
+        "transferReceived": 1048576,
+        "transferSent": 2097152,
+        "lastWireguardHandshake": "$handshake"
+      },
+      {
+        "fqdn": "idle-peer.netbird.cloud",
+        "netbirdIp": "100.92.2.2/16",
+        "netbirdIpv6": "",
+        "status": "Idle",
+        "connectionType": "",
+        "latency": 0,
+        "transferReceived": 0,
+        "transferSent": 0,
+        "lastWireguardHandshake": "0001-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "sessionExpiresAt": "$exp"
+}
+JSON
+}
+
+# Format of client/cmd/networks.go.
+networks_list() {
+    [ "$(cat "$S/daemon")" = Connected ] || die "Error: not connected"
+    echo "Available Networks:"
+    while IFS="$(printf '\t')" read -r id kind range sel; do
+        [ "$sel" = 1 ] && st=Selected || st="Not Selected"
+        if [ "$kind" = dom ]; then
+            printf '\n  - ID: %s\n    Domains: %s\n    Status: %s\n' "$id" "$range" "$st"
+            echo "    Resolved IPs:"
+            echo "      [git.example.com]: 192.0.2.10, 192.0.2.11"
+            echo "      [wiki.example.com]: 192.0.2.20"
+        else
+            printf '\n  - ID: %s\n    Network: %s\n    Status: %s\n' "$id" "$range" "$st"
+        fi
+    done < "$S/networks"
+}
+
+# networks_set <0|1> <append> ids... ; "all" matches every network.
+networks_set() {
+    val=$1 append=$2; shift 2
+    awk -F '\t' -v OFS='\t' -v val="$val" -v append="$append" -v ids=" $* " '
+        { hit = index(ids, " all ") || index(ids, " " $1 " ")
+          if (hit) $4 = val; else if (val == 1 && !append) $4 = 0
+          print }' "$S/networks" > "$S/networks.new"
+    mv "$S/networks.new" "$S/networks"
+}
+
+case "${1:-}" in
+  up)     echo Connected > "$S/daemon"; echo "Connected" ;;
+  down)   echo Idle > "$S/daemon"; echo "Disconnected" ;;
+  logout) echo NeedsLogin > "$S/daemon"; echo "Logged out successfully" ;;
+  status)
+    [ "${2:-}" = --json ] || die "mock: only 'status --json' is supported"
+    status_json ;;
+  profile)
+    case "${2:-}" in
+      list)
+        active=$(cat "$S/active")
+        printf '%-12s%-16s%s\n' ID NAME ACTIVE
+        while IFS="$(printf '\t')" read -r id name; do
+            [ "$id" = "$active" ] && mark='*' || mark=
+            printf '%-12s%-16s%s\n' "$id" "$name" "$mark"
+        done < "$S/profiles" ;;
+      select)
+        id=$(profile_id "${3:?profile name}")
+        [ -n "$id" ] || die "Error: profile ${3} not found"
+        echo "$id" > "$S/active"; echo Idle > "$S/daemon"
+        echo "Profile switched successfully to: ${3}" ;;
+      add)
+        name=${3:?profile name}
+        [ -z "$(profile_id "$name")" ] || die "Error: profile already exists"
+        id=$(printf '%s' "$name" | md5sum | cut -c1-8)
+        printf '%s\t%s\n' "$id" "$name" >> "$S/profiles"
+        echo "Profile added successfully: $name" ;;
+      rename)
+        id=$(profile_id "${3:?profile}")
+        [ -n "$id" ] || die "Error: profile ${3} not found"
+        awk -F '\t' -v OFS='\t' -v id="$id" -v n="${4:?new name}" \
+            '$1 == id { $2 = n } { print }' "$S/profiles" > "$S/profiles.new"
+        mv "$S/profiles.new" "$S/profiles"
+        echo "Profile renamed successfully" ;;
+      remove)
+        id=$(profile_id "${3:?profile}")
+        [ -n "$id" ] || die "Error: profile ${3} not found"
+        [ "$id" != "$(cat "$S/active")" ] || die "Error: cannot remove active profile"
+        awk -F '\t' -v id="$id" '$1 != id' "$S/profiles" > "$S/profiles.new"
+        mv "$S/profiles.new" "$S/profiles"
+        echo "Profile removed successfully: ${3}" ;;
+      *) die "mock: unsupported: $*" ;;
+    esac ;;
+  networks)
+    case "${2:-}" in
+      list|ls) networks_list ;;
+      select)
+        shift 2; append=0
+        [ "${1:-}" = --append ] && { append=1; shift; }
+        [ "$(cat "$S/daemon")" = Connected ] || die "Error: not connected"
+        networks_set 1 "$append" "$@"; echo "Networks selected successfully." ;;
+      deselect)
+        shift 2
+        [ "$(cat "$S/daemon")" = Connected ] || die "Error: not connected"
+        networks_set 0 0 "$@"; echo "Networks deselected successfully." ;;
+      *) die "mock: unsupported: $*" ;;
+    esac ;;
+  debug)
+    case "${2:-}" in
+      config) cat <<'JSON'
+{
+  "managementUrl": "https://api.netbird.io:443",
+  "adminURL": "https://app.netbird.io:443",
+  "configFile": "/var/lib/netbird/default.json",
+  "logFile": "/var/log/netbird/client.log",
+  "preSharedKey": "**********",
+  "interfaceName": "wt0",
+  "wireguardPort": 51820,
+  "mtu": 1280,
+  "serverSSHAllowed": false,
+  "disableAutoConnect": false,
+  "rosenpassEnabled": false,
+  "rosenpassPermissive": false,
+  "blockInbound": false,
+  "networkMonitor": true,
+  "disableDns": false,
+  "disableClientRoutes": false,
+  "disableServerRoutes": false,
+  "blockLanAccess": false,
+  "disableIpv6": false,
+  "disableSSHAuth": false,
+  "enableSSHRoot": false,
+  "enableSSHSFTP": false,
+  "enableSSHLocalPortForwarding": false,
+  "enableSSHRemotePortForwarding": false,
+  "sshJWTCacheTTL": 0,
+  "mDMManagedFields": []
+}
+JSON
+        ;;
+      bundle) printf 'Local file:\n/tmp/netbird.debug.smoke.zip\n' ;;
+      *) die "mock: unsupported: $*" ;;
+    esac ;;
+  *) die "mock: unsupported: $*" ;;
+esac

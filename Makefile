@@ -1,7 +1,7 @@
 UUID := netbird-cli@jfenal.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
-.PHONY: install uninstall schemas pack test nested enable disable prefs logs screenshot rpm
+.PHONY: install uninstall schemas pack test nested enable disable prefs logs screenshot smoke rpm
 
 install: schemas
 	mkdir -p $(dir $(INSTALL_DIR))
@@ -45,6 +45,10 @@ logs:
 # Regenerate screenshots/quick-settings.png (headless nested shell, demo data).
 screenshot:
 	tools/screenshot/run.sh
+
+# Headless nested-Wayland smoke test with a mock CLI; fails on JS errors.
+smoke:
+	tools/smoke/run.sh
 
 # Build dist/*.rpm (noarch + src) from the current tree.
 rpm:
