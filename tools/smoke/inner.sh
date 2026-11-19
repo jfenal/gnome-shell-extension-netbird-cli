@@ -102,6 +102,8 @@ wait_for 20 "the prefs window" js_true "!!$PREFS"
 wait_for 10 "prefs CLI calls" sh -c "[ \$(wc -l < '$CALLS') -gt $calls_before ]"
 sleep 2  # first refresh + rendering
 screenshot prefs.png
+# Check that networks list was called
+wait_for 5 "networks list in calls.log" sh -c "grep -qx 'networks list' '$CALLS'"
 ev "$PREFS.delete(global.get_current_time()); 'ok'" >/dev/null
 wait_for 10 "prefs window closed" js_true "!$PREFS"
 

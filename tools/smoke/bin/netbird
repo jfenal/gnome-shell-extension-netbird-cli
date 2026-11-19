@@ -97,8 +97,14 @@ networks_list() {
 # networks_set <0|1> <append> ids... ; "all" matches every network.
 networks_set() {
     val=$1 append=$2; shift 2
-    awk -F '\t' -v OFS='\t' -v val="$val" -v append="$append" -v ids=" $* " '
-        { hit = index(ids, " all ") || index(ids, " " $1 " ")
+    # Build a newline-separated list of IDs to avoid space-in-ID issues
+    ids=$(printf '%s\n' "$@")
+    awk -F '\t' -v OFS='\t' -v val="$val" -v append="$append" -v ids="$ids" '
+        BEGIN { split(ids, id_arr, "\n") }
+        { hit = 0
+          for (i in id_arr) {
+              if (id_arr[i] == "all" || id_arr[i] == $1) { hit = 1; break }
+          }
           if (hit) $4 = val; else if (val == 1 && !append) $4 = 0
           print }' "$S/networks" > "$S/networks.new"
     mv "$S/networks.new" "$S/networks"

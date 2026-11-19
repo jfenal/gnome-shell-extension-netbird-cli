@@ -14,19 +14,9 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 
 import {NetbirdCli, Status} from './netbird/cli.js';
-import {errorText, formatLocal, hostAddress, secondsUntil} from './netbird/parse.js';
+import {errorText, formatLocal, hostAddress, secondsUntil, STATUS_LABELS} from './netbird/parse.js';
 import {StatusIcons} from './shell/icons.js';
 import {pollIntervalSeconds} from './shell/polling.js';
-
-const STATUS_LABELS = {
-    [Status.CONNECTED]: 'Connected',
-    [Status.CONNECTING]: 'Connecting…',
-    [Status.IDLE]: 'Disconnected',
-    [Status.NEEDS_LOGIN]: 'Login required',
-    [Status.LOGIN_FAILED]: 'Login failed',
-    [Status.SESSION_EXPIRED]: 'Session expired',
-    [Status.UNAVAILABLE]: 'Daemon unavailable',
-};
 
 // Labels for the long-running actions while they are in flight.
 const ACTION_LABELS = {

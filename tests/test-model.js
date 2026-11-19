@@ -33,6 +33,12 @@ class FakeCli {
         return this._profilesData;
     }
 
+    async networks(_cancellable) {
+        if (this._shouldReject)
+            return {networks: [], disabled: false};
+        return {networks: [], disabled: false};
+    }
+
     async run(args, _cancellable) {
         return {ok: true, stdout: '', stderr: ''};
     }

@@ -21,7 +21,7 @@ export class WindowModel {
     constructor(cli, intervalSeconds = 2) {
         this._cli = cli;
         this._intervalSeconds = intervalSeconds;
-        this._state = {status: null, data: null, profiles: []};
+        this._state = {status: null, data: null, profiles: [], networks: [], features: {}};
         this._cancellable = new Gio.Cancellable();
         this._timeoutId = null;
         this._refreshing = false;
@@ -95,19 +95,22 @@ export class WindowModel {
         this._refreshing = true;
 
         try {
-            const [statusResult, profilesResult] = await Promise.all([
+            const [statusResult, profilesResult, networksResult] = await Promise.all([
                 this._cli.status(this._cancellable).catch(() => ({
                     status: 'Unavailable',
                     data: null,
                     error: 'status call failed',
                 })),
                 this._cli.profiles(this._cancellable).catch(() => null),
+                this._cli.networks(this._cancellable).catch(() => ({networks: [], disabled: false})),
             ]);
 
             this._state = {
                 status: statusResult.status,
                 data: statusResult.data,
                 profiles: profilesResult ?? [],
+                networks: networksResult.networks,
+                features: {networksDisabled: networksResult.disabled},
             };
 
             this._emit('changed', this._state);

@@ -1,7 +1,7 @@
 // Run with: gjs -m tests/test-netbird.js
 import GLib from 'gi://GLib';
 import System from 'system';
-import {parseProfileList, parsePeers, secondsUntil, formatLocal, errorText, hostAddress} from '../netbird/parse.js';
+import {parseProfileList, parsePeers, secondsUntil, formatLocal, errorText, hostAddress, parseNetworks, STATUS_LABELS, statusLabel} from '../netbird/parse.js';
 
 let failures = 0;
 function check(name, actual, expected) {
@@ -91,6 +91,66 @@ check('parsePeers unicode FQDN name',
 check('parsePeers fallback to IP when no FQDN',
     parsePeers({peers: {details: [{fqdn: '', netbirdIp: '100.92.4.4/16', status: 'Idle'}]}})[0].name,
     '100.92.4.4');
+
+// parseNetworks tests
+const networksFixture = `Available Networks:
+
+  - ID: office lan
+    Network: 192.168.1.0/24
+    Status: Selected
+
+  - ID: intranet
+    Domains: git.example.com, wiki.example.com
+    Status: Not Selected
+    Resolved IPs:
+      [git.example.com]: 192.0.2.10, 192.0.2.11
+      [wiki.example.com]: 192.0.2.20
+
+  - ID: exit-fr
+    Network: 0.0.0.0/0
+    Status: Not Selected
+`;
+
+const networks = parseNetworks(networksFixture);
+check('parseNetworks count', networks.length, 3);
+check('parseNetworks CIDR selected', {
+    id: networks[0].id,
+    range: networks[0].range,
+    selected: networks[0].selected,
+    isExitNode: networks[0].isExitNode,
+}, {id: 'office lan', range: '192.168.1.0/24', selected: true, isExitNode: false});
+
+check('parseNetworks domain route', {
+    id: networks[1].id,
+    domains: networks[1].domains,
+    resolvedIps: networks[1].resolvedIps,
+    selected: networks[1].selected,
+    isExitNode: networks[1].isExitNode,
+}, {
+    id: 'intranet',
+    domains: ['git.example.com', 'wiki.example.com'],
+    resolvedIps: ['192.0.2.10', '192.0.2.11', '192.0.2.20'],
+    selected: false,
+    isExitNode: false,
+});
+
+check('parseNetworks exit node', {
+    id: networks[2].id,
+    range: networks[2].range,
+    selected: networks[2].selected,
+    isExitNode: networks[2].isExitNode,
+}, {id: 'exit-fr', range: '0.0.0.0/0', selected: false, isExitNode: true});
+
+check('parseNetworks empty', parseNetworks('No networks available.\n'), []);
+check('parseNetworks id with spaces preserved', parseNetworks(networksFixture)[0].id, 'office lan');
+
+// STATUS_LABELS and statusLabel tests
+check('statusLabel Connected', statusLabel('Connected'), 'Connected');
+check('statusLabel Idle', statusLabel('Idle'), 'Disconnected');
+check('statusLabel NeedsLogin', statusLabel('NeedsLogin'), 'Login required');
+check('statusLabel unknown', statusLabel('UnknownState'), 'UnknownState');
+check('STATUS_LABELS.Connected', STATUS_LABELS.Connected, 'Connected');
+check('STATUS_LABELS.Idle', STATUS_LABELS.Idle, 'Disconnected');
 
 if (failures)
     System.exit(1);

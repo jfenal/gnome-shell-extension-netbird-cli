@@ -16,6 +16,27 @@ export const Status = {
     UNAVAILABLE: 'Unavailable',
 };
 
+// Human-readable labels for daemon states.
+export const STATUS_LABELS = {
+    [Status.CONNECTED]: 'Connected',
+    [Status.CONNECTING]: 'Connecting…',
+    [Status.IDLE]: 'Disconnected',
+    [Status.NEEDS_LOGIN]: 'Login required',
+    [Status.LOGIN_FAILED]: 'Login failed',
+    [Status.SESSION_EXPIRED]: 'Session expired',
+    [Status.UNAVAILABLE]: 'Daemon unavailable',
+};
+
+/**
+ * Human-readable label for a daemon status.
+ *
+ * @param {string} state - daemon status (from Status)
+ * @returns {string} label (falls back to the raw state)
+ */
+export function statusLabel(state) {
+    return STATUS_LABELS[state] ?? state;
+}
+
 /**
  * Best-effort error text from a CLI result.
  *
@@ -152,4 +173,83 @@ export function parsePeers(statusJson) {
     });
 
     return peers;
+}
+
+/**
+ * Parse `netbird networks list` output.
+ *
+ * Format: blocks starting with `  - ID: <id>`, then either:
+ *   - `    Network: <cidr>` for CIDR routes
+ *   - `    Domains: <comma, separated>` for domain routes
+ * Followed by `    Status: Selected|Not Selected`.
+ * Optional `    Resolved IPs:` section with `      [domain]: ip, ip` lines.
+ *
+ * Exit node ⇔ range is `0.0.0.0/0` or `::/0`.
+ *
+ * @param {string} text - CLI stdout
+ * @returns {{id: string, range: string, domains: string[], resolvedIps: string[], selected: boolean, isExitNode: boolean}[]}
+ */
+export function parseNetworks(text) {
+    if (text.includes('No networks available.'))
+        return [];
+
+    const networks = [];
+    const lines = text.split('\n');
+    let current = null;
+
+    for (const line of lines) {
+        // Start of a network block
+        const idMatch = line.match(/^  - ID: (.+)$/);
+        if (idMatch) {
+            if (current)
+                networks.push(current);
+            current = {
+                id: idMatch[1],
+                range: '',
+                domains: [],
+                resolvedIps: [],
+                selected: false,
+                isExitNode: false,
+            };
+            continue;
+        }
+
+        if (!current)
+            continue;
+
+        // Network field (CIDR)
+        const networkMatch = line.match(/^    Network: (.+)$/);
+        if (networkMatch) {
+            current.range = networkMatch[1];
+            current.isExitNode = networkMatch[1] === '0.0.0.0/0' || networkMatch[1] === '::/0';
+            continue;
+        }
+
+        // Domains field
+        const domainsMatch = line.match(/^    Domains: (.+)$/);
+        if (domainsMatch) {
+            current.domains = domainsMatch[1].split(',').map(d => d.trim());
+            continue;
+        }
+
+        // Status field
+        const statusMatch = line.match(/^    Status: (.+)$/);
+        if (statusMatch) {
+            current.selected = statusMatch[1] === 'Selected';
+            continue;
+        }
+
+        // Resolved IPs (individual lines)
+        const resolvedMatch = line.match(/^      \[.+?\]: (.+)$/);
+        if (resolvedMatch) {
+            const ips = resolvedMatch[1].split(',').map(ip => ip.trim());
+            current.resolvedIps.push(...ips);
+            continue;
+        }
+    }
+
+    if (current)
+        networks.push(current);
+
+    return networks;
 }

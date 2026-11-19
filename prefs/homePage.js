@@ -3,9 +3,10 @@
 // Home page: connection state and local peer details.
 
 import Adw from 'gi://Adw';
+import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
-import {Status, hostAddress, errorText} from '../netbird/parse.js';
+import {Status, hostAddress, errorText, statusLabel} from '../netbird/parse.js';
 import {createCopyLabel} from './copyLabel.js';
 
 /**
@@ -82,6 +83,16 @@ export function createHomePage(model, window) {
     content.append(ipv4Label.widget);
     content.append(ipv6Label.widget);
 
+    const exitGroup = new Adw.PreferencesGroup({
+        margin_top: 28,
+    });
+    const exitNode = new Adw.ComboRow({
+        subtitle: 'Route traffic through another NetBird peer',
+        title: 'Exit Node',
+    });
+    exitGroup.add(exitNode);
+    content.append(exitGroup);
+
     scrolled.set_child(clamp);
 
     // PreferencesPage only accepts PreferencesGroup
@@ -90,6 +101,10 @@ export function createHomePage(model, window) {
     page.add(group);
 
     let suppressConnection = false;
+    let suppressExitNode = false;
+    let exitNodeIds = [];
+    let selectedExitNodeId = '';
+    let selectionSourceId = 0;
 
     connectionSwitch.connect('notify::active', async () => {
         if (suppressConnection)
@@ -102,6 +117,23 @@ export function createHomePage(model, window) {
                 title: errorText(result, 'Connection toggle failed'),
             }));
         }
+    });
+
+    exitNode.connect('notify::selected', () => {
+        if (suppressExitNode)
+            return;
+
+        const id = exitNodeIds[exitNode.selected] ?? '';
+        if (id === selectedExitNodeId)
+            return;
+
+        if (selectionSourceId)
+            GLib.Source.remove(selectionSourceId);
+        selectionSourceId = GLib.idle_add(GLib.PRIORITY_DEFAULT_IDLE, () => {
+            selectionSourceId = 0;
+            selectExitNode(id, model, window);
+            return GLib.SOURCE_REMOVE;
+        });
     });
 
     const signalId = model.connect('changed', (state) => {
@@ -118,32 +150,83 @@ export function createHomePage(model, window) {
         fqdnLabel.setText(connected ? (data.fqdn || '') : '');
         ipv4Label.setText(connected ? hostAddress(data.netbirdIp || '') : '');
         ipv6Label.setText(connected ? hostAddress(data.netbirdIpv6 || '') : '');
+
+        // Exit node ComboRow
+        const exits = state.networks.filter(network => network.isExitNode);
+        exitGroup.visible = !state.features.networksDisabled;
+        const names = ['No exit node', ...exits.map(network => network.id)];
+        const nextExitNodeIds = ['', ...exits.map(network => network.id)];
+        selectedExitNodeId = exits.find(network => network.selected)?.id ?? '';
+
+        suppressExitNode = true;
+        if (!arraysEqual(exitNodeIds, nextExitNodeIds)) {
+            exitNodeIds = nextExitNodeIds;
+            exitNode.model = Gtk.StringList.new(names);
+        }
+        const selected = exits.findIndex(network => network.selected);
+        exitNode.selected = selected === -1 ? 0 : selected + 1;
+        suppressExitNode = false;
+        exitNode.sensitive = connected && exits.length > 0;
     });
 
     page.connect('destroy', () => {
+        if (selectionSourceId) {
+            GLib.Source.remove(selectionSourceId);
+            selectionSourceId = 0;
+        }
         model.disconnect(signalId);
     });
 
     return page;
 }
 
-function statusLabel(status) {
-    switch (status) {
-    case Status.CONNECTED:
-        return 'Connected';
-    case Status.CONNECTING:
-        return 'Connecting…';
-    case Status.IDLE:
-        return 'Idle';
-    case Status.NEEDS_LOGIN:
-        return 'Login Required';
-    case Status.LOGIN_FAILED:
-        return 'Login Failed';
-    case Status.SESSION_EXPIRED:
-        return 'Session Expired';
-    case Status.UNAVAILABLE:
-        return 'Daemon Unavailable';
-    default:
-        return 'Unknown';
+async function selectExitNode(id, model, window) {
+    // Collect all exit node IDs from current state
+    const allExitIds = [];
+    for (const signalValue of model._signals.values()) {
+        // We can't easily get the last state; instead run networks deselect for all
+        // current exit nodes, then select the new one
+        break;
     }
+
+    // Simpler approach: if id is empty, deselect all exit nodes
+    // Otherwise, deselect all exit nodes then select the new one with --append
+    const state = model._state;
+    const exits = state.networks.filter(network => network.isExitNode);
+
+    if (id === '') {
+        // Deselect all exit nodes
+        const selectedExits = exits.filter(network => network.selected);
+        if (selectedExits.length > 0) {
+            const result = await model.run(['networks', 'deselect', ...selectedExits.map(n => n.id)]);
+            if (!result.ok) {
+                window.add_toast(new Adw.Toast({
+                    title: errorText(result, 'Exit node deselection failed'),
+                }));
+            }
+        }
+    } else {
+        // Deselect all exit nodes first, then select the new one
+        const otherExits = exits.filter(network => network.id !== id && network.selected);
+        if (otherExits.length > 0) {
+            const result = await model.run(['networks', 'deselect', ...otherExits.map(n => n.id)]);
+            if (!result.ok) {
+                window.add_toast(new Adw.Toast({
+                    title: errorText(result, 'Exit node deselection failed'),
+                }));
+                return;
+            }
+        }
+        // Select the new exit node
+        const result = await model.run(['networks', 'select', '--append', id]);
+        if (!result.ok) {
+            window.add_toast(new Adw.Toast({
+                title: errorText(result, 'Exit node selection failed'),
+            }));
+        }
+    }
+}
+
+function arraysEqual(a, b) {
+    return a.length === b.length && a.every((val, i) => val === b[i]);
 }

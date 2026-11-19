@@ -5,7 +5,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
-import {Status, errorText, parseProfileList} from './parse.js';
+import {Status, errorText, parseProfileList, parseNetworks} from './parse.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
@@ -84,5 +84,48 @@ export class NetbirdCli {
         if (!result.ok)
             return null;
         return parseProfileList(result.stdout);
+    }
+
+    /**
+     * List networks. Non-zero exit or "No networks available." → empty array.
+     * "network selection is disabled" → empty array (caller should detect via text).
+     *
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{networks: Network[], disabled: boolean}>}
+     */
+    async networks(cancellable) {
+        const result = await this.run(['networks', 'list'], cancellable);
+        const disabled = result.stderr.includes('network selection is disabled') ||
+                         result.stdout.includes('network selection is disabled');
+        if (!result.ok || disabled)
+            return {networks: [], disabled};
+        return {networks: parseNetworks(result.stdout), disabled: false};
+    }
+
+    /**
+     * Select networks.
+     *
+     * @param {string[]} ids - network IDs to select
+     * @param {{append: boolean}} options - append to current selection
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
+     */
+    async selectNetworks(ids, options, cancellable) {
+        const args = ['networks', 'select'];
+        if (options?.append)
+            args.push('--append');
+        args.push(...ids);
+        return this.run(args, cancellable);
+    }
+
+    /**
+     * Deselect networks.
+     *
+     * @param {string[]} ids - network IDs to deselect
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
+     */
+    async deselectNetworks(ids, cancellable) {
+        return this.run(['networks', 'deselect', ...ids], cancellable);
     }
 }
