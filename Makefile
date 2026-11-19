@@ -15,7 +15,7 @@ schemas:
 
 pack:
 	mkdir -p dist
-	gnome-extensions pack --force --out-dir=dist --extra-source=netbird.js .
+	gnome-extensions pack --force --out-dir=dist --extra-source=netbird .
 
 test:
 	gjs -m tests/test-netbird.js

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0-or-later
+// SPDX-License-Identifier: GPL-3.0-or-later
 //
 // NetBird Quick Settings toggle. Drives the `netbird` CLI.
 
@@ -12,7 +12,8 @@ import * as MessageTray from 'resource:///org/gnome/shell/ui/messageTray.js';
 import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 
-import {NetbirdCli, Status, errorText, formatLocal, secondsUntil} from './netbird.js';
+import {NetbirdCli, Status} from './netbird/cli.js';
+import {errorText, formatLocal, secondsUntil} from './netbird/parse.js';
 
 const ICON_CONNECTED = 'network-vpn-symbolic';
 const ICON_CONNECTING = 'network-vpn-acquiring-symbolic';

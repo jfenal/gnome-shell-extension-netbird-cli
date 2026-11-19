@@ -5,7 +5,7 @@ Version:        0.1.0
 Release:        1%{?dist}
 Summary:        GNOME Shell Quick Settings toggle for NetBird
 
-License:        GPL-2.0-or-later
+License:        GPL-3.0-or-later
 URL:            https://github.com/jfenal/gnome-shell-extension-netbird-cli
 Source0:        %{url}/archive/v%{version}/%{name}-%{version}.tar.gz
 
@@ -31,8 +31,9 @@ switches profiles, warns before the session expires and can extend it.
 
 %install
 install -d %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}
-install -pm 0644 metadata.json extension.js netbird.js prefs.js \
+install -pm 0644 metadata.json extension.js prefs.js \
     %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}/
+cp -pr netbird %{buildroot}%{_datadir}/gnome-shell/extensions/%{uuid}/
 install -Dpm 0644 schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml \
     %{buildroot}%{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 

@@ -1,7 +1,7 @@
 // Run with: gjs -m tests/test-netbird.js
 import GLib from 'gi://GLib';
 import System from 'system';
-import {parseProfileList, secondsUntil, formatLocal, errorText} from '../netbird.js';
+import {parseProfileList, secondsUntil, formatLocal, errorText} from '../netbird/parse.js';
 
 let failures = 0;
 function check(name, actual, expected) {
