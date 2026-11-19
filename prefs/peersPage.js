@@ -25,7 +25,7 @@ export function createPeersPage(model, _window) {
         iconName: 'network-workgroup-symbolic',
     });
 
-    const root = new Gtk.Box({
+    const content = new Gtk.Box({
         orientation: Gtk.Orientation.VERTICAL,
     });
 
@@ -49,7 +49,7 @@ export function createPeersPage(model, _window) {
         ['Peer connection filter']);
     controls.append(search);
     controls.append(filter);
-    root.append(controls);
+    content.append(controls);
 
     const overlay = new Gtk.Overlay({
         hexpand: true,
@@ -75,11 +75,12 @@ export function createPeersPage(model, _window) {
         title: 'No Peers',
     });
     overlay.add_overlay(empty);
-    root.append(overlay);
+    content.append(overlay);
 
-    const pageContent = new Gtk.Box();
-    pageContent.append(root);
-    page.add(pageContent);
+    // PreferencesPage only accepts PreferencesGroup
+    const group = new Adw.PreferencesGroup();
+    group.add(content);
+    page.add(group);
 
     const entries = new Map();
     let connected = false;

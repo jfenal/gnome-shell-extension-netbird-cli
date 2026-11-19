@@ -21,10 +21,6 @@ export function createHomePage(model, window) {
         iconName: 'user-home-symbolic',
     });
 
-    const root = new Gtk.Box({
-        orientation: Gtk.Orientation.VERTICAL,
-    });
-
     const scrolled = new Gtk.ScrolledWindow({
         hscrollbar_policy: Gtk.PolicyType.NEVER,
         vexpand: true,
@@ -87,12 +83,11 @@ export function createHomePage(model, window) {
     content.append(ipv6Label.widget);
 
     scrolled.set_child(clamp);
-    root.append(scrolled);
 
-    // Add root to a child to get it into the page
-    const pageContent = new Gtk.Box();
-    pageContent.append(root);
-    page.add(pageContent);
+    // PreferencesPage only accepts PreferencesGroup
+    const group = new Adw.PreferencesGroup();
+    group.add(scrolled);
+    page.add(group);
 
     let suppressConnection = false;
 
