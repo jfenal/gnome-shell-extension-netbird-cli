@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import GLib from 'gi://GLib';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {NetbirdCli} from './netbird/cli.js';
@@ -7,6 +8,7 @@ import {WindowModel} from './prefs/model.js';
 import {createHomePage} from './prefs/homePage.js';
 import {createPeersPage} from './prefs/peersPage.js';
 import {createNetworksPage} from './prefs/networksPage.js';
+import {createProfilesPage} from './prefs/profilesPage.js';
 import {createExtensionPage} from './prefs/extensionPage.js';
 
 export default class NetbirdPreferences extends ExtensionPreferences {
@@ -18,11 +20,18 @@ export default class NetbirdPreferences extends ExtensionPreferences {
         // Store settings on window so pages can access it
         window._settings = settings;
 
-        // Add pages (order: Home, Peers, Networks, Extension)
-        window.add(createHomePage(model, window));
-        window.add(createPeersPage(model, window));
-        window.add(createNetworksPage(model, window));
-        window.add(createExtensionPage(model, window));
+        // Add pages (order: Home, Peers, Networks, Profiles, Extension)
+        const homePage = createHomePage(model, window);
+        const peersPage = createPeersPage(model, window);
+        const networksPage = createNetworksPage(model, window);
+        const profilesPage = createProfilesPage(model, window);
+        const extensionPage = createExtensionPage(model, window);
+
+        window.add(homePage);
+        window.add(peersPage);
+        window.add(networksPage);
+        window.add(profilesPage);
+        window.add(extensionPage);
 
         // Wire model lifecycle to window
         window.connect('close-request', () => {
@@ -30,5 +39,24 @@ export default class NetbirdPreferences extends ExtensionPreferences {
         });
 
         model.start();
+
+        // Support NETBIRD_PREFS_PAGE env var for smoke tests
+        // Set the visible page after the window is shown
+        const targetPage = GLib.getenv('NETBIRD_PREFS_PAGE');
+        if (targetPage) {
+            const pageMap = {
+                'Home': homePage,
+                'Peers': peersPage,
+                'Networks': networksPage,
+                'Profiles': profilesPage,
+            };
+            const page = pageMap[targetPage];
+            if (page) {
+                GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+                    window.set_visible_page(page);
+                    return GLib.SOURCE_REMOVE;
+                });
+            }
+        }
     }
 }

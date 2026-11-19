@@ -93,19 +93,35 @@ sleep 1  # let the menu animation settle
 screenshot menu.png
 ev "Main.panel.closeQuickSettings(); 'ok'" >/dev/null
 
-STEP="4 (prefs window)"
+STEP="4 (prefs window screenshots)"
 say "$STEP"
+# Connect before opening prefs (so Networks page shows content)
+ev "$TILE.emit('clicked', 1); 'ok'" >/dev/null
+wait_for 10 "'netbird up' in calls.log (prefs)" sh -c "grep -qx 'up' '$CALLS'"
+wait_for 10 "tile checked before prefs" js_true "$TILE.checked === true"
+
 calls_before=$(wc -l < "$CALLS")
-gnome-extensions prefs "$UUID"
-wait_for 20 "the prefs window" js_true "!!$PREFS"
-# The prefs process polls the CLI too (mock first in its PATH).
-wait_for 10 "prefs CLI calls" sh -c "[ \$(wc -l < '$CALLS') -gt $calls_before ]"
-sleep 2  # first refresh + rendering
-screenshot prefs.png
-# Check that networks list was called
+# Screenshot each page: Home, Peers, Networks, Profiles
+for page in Home Peers Networks Profiles; do
+    export NETBIRD_PREFS_PAGE="$page"
+    gnome-extensions prefs "$UUID"
+    wait_for 20 "the prefs window ($page)" js_true "!!$PREFS"
+    wait_for 10 "prefs CLI calls ($page)" sh -c "[ \$(wc -l < '$CALLS') -gt $calls_before ]"
+    sleep 2  # first refresh + rendering
+    screenshot "prefs-$page.png"
+    ev "$PREFS.delete(global.get_current_time()); 'ok'" >/dev/null
+    wait_for 10 "prefs window closed ($page)" js_true "!$PREFS"
+    calls_before=$(wc -l < "$CALLS")
+done
+unset NETBIRD_PREFS_PAGE
+
+# Check that networks list was called (since we were connected)
 wait_for 5 "networks list in calls.log" sh -c "grep -qx 'networks list' '$CALLS'"
-ev "$PREFS.delete(global.get_current_time()); 'ok'" >/dev/null
-wait_for 10 "prefs window closed" js_true "!$PREFS"
+
+# Disconnect after closing prefs
+ev "$TILE.emit('clicked', 1); 'ok'" >/dev/null
+wait_for 10 "'netbird down' after prefs" sh -c "tail -1 '$CALLS' | grep -qx 'down'"
+wait_for 10 "tile unchecked after prefs" js_true "$TILE.checked === false"
 
 STEP="5 (disable/enable cycles)"
 say "$STEP"

@@ -113,7 +113,14 @@ networks_set() {
 case "${1:-}" in
   up)     echo Connected > "$S/daemon"; echo "Connected" ;;
   down)   echo Idle > "$S/daemon"; echo "Disconnected" ;;
-  logout) echo NeedsLogin > "$S/daemon"; echo "Logged out successfully" ;;
+  logout)
+    # Support both: `logout` and `logout --profile <id>`
+    if [ "${2:-}" = --profile ]; then
+        shift 2
+        id=$(profile_id "${1:?profile}")
+        [ -n "$id" ] || die "Error: profile ${1} not found"
+    fi
+    echo NeedsLogin > "$S/daemon"; echo "Logged out successfully" ;;
   status)
     [ "${2:-}" = --json ] || die "mock: only 'status --json' is supported"
     status_json ;;
