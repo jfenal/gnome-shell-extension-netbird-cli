@@ -9,6 +9,7 @@ import {createHomePage} from './prefs/homePage.js';
 import {createPeersPage} from './prefs/peersPage.js';
 import {createNetworksPage} from './prefs/networksPage.js';
 import {createProfilesPage} from './prefs/profilesPage.js';
+import {createDaemonSettingsPage} from './prefs/daemonSettingsPage.js';
 import {createExtensionPage} from './prefs/extensionPage.js';
 
 export default class NetbirdPreferences extends ExtensionPreferences {
@@ -25,12 +26,14 @@ export default class NetbirdPreferences extends ExtensionPreferences {
         const peersPage = createPeersPage(model, window);
         const networksPage = createNetworksPage(model, window);
         const profilesPage = createProfilesPage(model, window);
+        const settingsPage = createDaemonSettingsPage(model, window);
         const extensionPage = createExtensionPage(model, window);
 
         window.add(homePage);
         window.add(peersPage);
         window.add(networksPage);
         window.add(profilesPage);
+        window.add(settingsPage);
         window.add(extensionPage);
 
         // Wire model lifecycle to window
@@ -50,6 +53,7 @@ export default class NetbirdPreferences extends ExtensionPreferences {
                 'Peers': peersPage,
                 'Networks': networksPage,
                 'Profiles': profilesPage,
+                'Settings': settingsPage,
             };
             const page = pageMap[targetPage];
             if (page) {

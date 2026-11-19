@@ -55,4 +55,4 @@ bad=$(cat "$WORK/shell.log" "$WORK/session.log" 2>/dev/null | grep \
 [ -z "$bad" ] || fail "step 6: errors in shell/prefs logs (above)"
 
 rm -rf "$WORK"
-echo "smoke: OK: $OUT/menu.png $OUT/prefs-Home.png $OUT/prefs-Peers.png $OUT/prefs-Networks.png $OUT/prefs-Profiles.png"
+echo "smoke: OK: $(ls "$OUT"/*.png | tr "\n" " ")"

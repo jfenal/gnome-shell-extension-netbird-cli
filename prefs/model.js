@@ -29,6 +29,21 @@ export class WindowModel {
         this._nextSignalId = 1;
     }
 
+    /** @returns {object} the NetbirdCli the model polls with */
+    get cli() {
+        return this._cli;
+    }
+
+    /** @returns {object} last emitted state */
+    get state() {
+        return this._state;
+    }
+
+    /** @returns {Gio.Cancellable} cancelled when the window closes */
+    get cancellable() {
+        return this._cancellable;
+    }
+
     /**
      * Connect to a signal.
      *

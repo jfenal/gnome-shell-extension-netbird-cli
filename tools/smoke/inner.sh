@@ -102,7 +102,7 @@ wait_for 10 "tile checked before prefs" js_true "$TILE.checked === true"
 
 calls_before=$(wc -l < "$CALLS")
 # Screenshot each page: Home, Peers, Networks, Profiles
-for page in Home Peers Networks Profiles; do
+for page in Home Peers Networks Profiles Settings; do
     echo "$page" > "$NETBIRD_PREFS_PAGE_FILE"
     gnome-extensions prefs "$UUID"
     wait_for 20 "the prefs window ($page)" js_true "!!$PREFS"

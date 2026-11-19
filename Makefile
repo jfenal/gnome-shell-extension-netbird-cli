@@ -20,6 +20,7 @@ pack:
 test:
 	gjs -m tests/test-netbird.js
 	gjs -m tests/test-cli.js
+	gjs -m tests/test-config.js
 	gjs -m tests/test-icons.js
 	gjs -m tests/test-model.js
 	gjs -m tests/test-polling.js

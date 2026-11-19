@@ -6,6 +6,7 @@ import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 
 import {Status, errorText, parseProfileList, parseNetworks, isProfilesDisabled} from './parse.js';
+import {parseConfig, flagsFor} from './config.js';
 
 Gio._promisify(Gio.Subprocess.prototype, 'communicate_utf8_async');
 
@@ -172,5 +173,40 @@ export class NetbirdCli {
      */
     async logout(id, cancellable) {
         return this.run(['logout', '--profile', id], cancellable);
+    }
+
+    /**
+     * Daemon settings from `netbird debug config`.
+     *
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{values: object|null, managed: Set<string>, error: string|null}>}
+     */
+    async config(cancellable) {
+        const result = await this.run(['debug', 'config'], cancellable);
+        if (result.ok) {
+            try {
+                return {...parseConfig(result.stdout), error: null};
+            } catch {
+                // fall through: unparsable output is reported like a failure
+            }
+        }
+        return {values: null, managed: new Set(), error: errorText(result, 'could not read NetBird settings')};
+    }
+
+    /**
+     * Write daemon settings. The CLI only writes settings through `up`,
+     * which also connects: when NetBird was not connected before, it is
+     * disconnected again afterwards.
+     *
+     * @param {Record<string, boolean|string|number>} changes - key → value
+     * @param {boolean} wasConnected - NetBird state before the write
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>} the `up` result
+     */
+    async applySettings(changes, wasConnected, cancellable) {
+        const result = await this.run(['up', ...flagsFor(changes)], cancellable);
+        if (result.ok && !wasConnected)
+            await this.run(['down'], cancellable);
+        return result;
     }
 }
