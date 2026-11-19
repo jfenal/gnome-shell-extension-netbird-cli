@@ -21,6 +21,11 @@
       <default>true</default>
       <summary>Show a panel icon while connected</summary>
     </key>
+    <key name="auto-extend" type="b">
+      <default>false</default>
+      <summary>Renew the SSO session automatically</summary>
+      <description>Run "netbird login --extend" before the session expires (at the expiry warning lead time, or 10 minutes when the warning is disabled). Opens the browser; usually no input is needed if you are still signed in to your identity provider.</description>
+    </key>
     <key name="guard-gnome-vpn" type="b">
       <default>true</default>
       <summary>Manage GNOME VPN while NetBird is connected</summary>

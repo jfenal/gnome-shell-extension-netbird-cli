@@ -57,6 +57,13 @@ export function createExtensionPage(_model, window) {
     settings.bind('expiry-warning-minutes', expiryRow, 'value', Gio.SettingsBindFlags.DEFAULT);
     sessionGroup.add(expiryRow);
 
+    const autoExtendRow = new Adw.SwitchRow({
+        title: 'Auto-extend session',
+        subtitle: 'Renew the SSO session before it expires. Opens your browser; usually no input is needed if you are still signed in to your identity provider.',
+    });
+    settings.bind('auto-extend', autoExtendRow, 'active', Gio.SettingsBindFlags.DEFAULT);
+    sessionGroup.add(autoExtendRow);
+
     const cliGroup = new Adw.PreferencesGroup({title: 'CLI'});
     page.add(cliGroup);
 

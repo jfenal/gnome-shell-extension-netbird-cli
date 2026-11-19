@@ -46,6 +46,7 @@ gjs -m tests/test-icons.js
 gjs -m tests/test-model.js
 gjs -m tests/test-polling.js
 gjs -m tests/test-vpn.js
+gjs -m tests/test-auto-extend.js
 
 %files
 %license LICENSE

@@ -18,6 +18,10 @@ import {errorText, formatLocal, hostAddress, secondsUntil, STATUS_LABELS} from '
 import {StatusIcons} from './shell/icons.js';
 import {pollIntervalSeconds} from './shell/polling.js';
 import {VpnButtonGuard} from './shell/vpnButtonGuard.js';
+import {autoExtendDue, autoExtendLeadSeconds} from './shell/autoExtend.js';
+
+// Give up on an automatic renewal the user did not complete in the browser.
+const AUTO_EXTEND_TIMEOUT_SECONDS = 5 * 60;
 
 // Labels for the long-running actions while they are in flight.
 const ACTION_LABELS = {
@@ -53,6 +57,8 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         this._lifeCancellable = new Gio.Cancellable();
         this._refreshing = false;
         this._warnedExpiry = null;
+        this._autoExtendDeadline = null;
+        this._autoExtendTimeoutId = 0;
         this._lastConnected = false;
         this._notificationSource = null;
         this._vpnGuard = null;
@@ -252,18 +258,38 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _checkExpiry() {
-        const warnMinutes = this._settings.get_uint('expiry-warning-minutes');
         const expiresAt = this._data?.sessionExpiresAt;
-        if (!warnMinutes || !this.isConnected || !expiresAt)
+        if (!this.isConnected || !expiresAt)
             return;
-        // Warn once per session (a new expiry means the session was renewed).
-        if (this._warnedExpiry === expiresAt)
+        const warnMinutes = this._settings.get_uint('expiry-warning-minutes');
+        const remaining = secondsUntil(expiresAt);
+        const autoExtend = this._settings.get_boolean('auto-extend');
+
+        if (autoExtendDue({
+            enabled: autoExtend,
+            connected: this.isConnected,
+            secondsLeft: remaining,
+            leadSeconds: autoExtendLeadSeconds(warnMinutes),
+            deadline: expiresAt,
+            lastAttemptDeadline: this._autoExtendDeadline,
+        })) {
+            this._autoExtendDeadline = expiresAt;
+            this._autoExtend(expiresAt);
+            return;
+        }
+        // An attempt for this deadline is running or failed (and warned).
+        if (autoExtend && this._autoExtendDeadline === expiresAt)
             return;
 
-        const remaining = secondsUntil(expiresAt);
+        // Warn once per session (a new expiry means the session was renewed).
+        if (!warnMinutes || this._warnedExpiry === expiresAt)
+            return;
         if (remaining === null || remaining <= 0 || remaining > warnMinutes * 60)
             return;
+        this._warnExpiry(expiresAt, remaining);
+    }
 
+    _warnExpiry(expiresAt, remaining) {
         this._warnedExpiry = expiresAt;
         const minutes = Math.max(1, Math.round(remaining / 60));
         this._notify(
@@ -272,20 +298,35 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
             [['Extend session', () => this._runAction('extend')]]);
     }
 
-    _checkSessionExpiry() {
-        // Track session expiry: notify when the session expires after we saw Connected.
-        if (this._status === Status.CONNECTED) {
-            this._lastConnected = true;
-        } else if ((this._status === Status.SESSION_EXPIRED || this._status === Status.NEEDS_LOGIN) &&
-                   this._lastConnected) {
-            this._lastConnected = false;
-            this._notify(
-                'NetBird Session Expired',
-                'Sign in again to reconnect to your NetBird network.',
-                [['Sign In', () => this._runAction('up')]]);
-        } else if (this._status === Status.UNAVAILABLE) {
-            this._lastConnected = false;
+    // `netbird login --extend` opens the browser; it completes on its own
+    // when the user is still signed in at the identity provider.
+    async _autoExtend(expiresAt) {
+        this._autoExtendTimeoutId = GLib.timeout_add_seconds(
+            GLib.PRIORITY_DEFAULT, AUTO_EXTEND_TIMEOUT_SECONDS, () => {
+                this._autoExtendTimeoutId = 0;
+                if (this._pendingAction === 'extend')
+                    this._actionCancellable?.cancel();
+                return GLib.SOURCE_REMOVE;
+            });
+        const ok = await this._runAction('extend');
+        if (this._autoExtendTimeoutId) {
+            GLib.Source.remove(this._autoExtendTimeoutId);
+            this._autoExtendTimeoutId = 0;
         }
+        if (this._lifeCancellable.is_cancelled())
+            return;
+
+        if (ok) {
+            await this.refresh();
+            const renewed = this._data?.sessionExpiresAt;
+            this._notify('NetBird session extended', renewed && renewed !== expiresAt
+                ? `New expiry: ${formatLocal(renewed)}.`
+                : 'Your session has been renewed.');
+            return;
+        }
+        const remaining = secondsUntil(expiresAt);
+        if (remaining !== null && remaining > 0)
+            this._warnExpiry(expiresAt, remaining);
     }
 
     _notify(title, body, actions = []) {
@@ -379,6 +420,9 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
     destroy() {
         this._lifeCancellable.cancel();
         this._settings.disconnectObject(this);
+        if (this._autoExtendTimeoutId)
+            GLib.Source.remove(this._autoExtendTimeoutId);
+        this._autoExtendTimeoutId = 0;
         this._vpnGuard?.destroy();
         this._vpnGuard = null;
         this._notificationSource?.disconnectObject(this);

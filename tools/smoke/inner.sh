@@ -127,6 +127,19 @@ ev "$TILE.emit('clicked', 1); 'ok'" >/dev/null
 wait_for 10 "'netbird down' after prefs" sh -c "tail -1 '$CALLS' | grep -qx 'down'"
 wait_for 10 "tile unchecked after prefs" js_true "$TILE.checked === false"
 
+STEP="4b (auto-extend)"
+say "$STEP"
+SETTINGS_JS="Main.extensionManager.lookup('$UUID').stateObj.getSettings()"
+ev "$SETTINGS_JS.set_boolean('auto-extend', true); 'ok'" >/dev/null
+touch "$SMOKE_STATE/expiring"
+ev "$TILE.emit('clicked', 1); 'ok'" >/dev/null
+wait_for 15 "'netbird login --extend' in calls.log" sh -c "grep -qx 'login --extend' '$CALLS'"
+sleep 6  # two more polls: must not retry once renewed
+[ "$(grep -cx 'login --extend' "$CALLS")" -eq 1 ] || fail "login --extend ran more than once"
+ev "$SETTINGS_JS.set_boolean('auto-extend', false); 'ok'" >/dev/null
+ev "$TILE.emit('clicked', 1); 'ok'" >/dev/null
+wait_for 10 "tile unchecked after auto-extend" js_true "$TILE.checked === false"
+
 STEP="5 (disable/enable cycles)"
 say "$STEP"
 for i in 1 2 3 4 5; do

@@ -30,7 +30,12 @@ status_json() {
     daemon=$(cat "$S/daemon")
     active=$(cat "$S/active")
     profile=$(awk -F '\t' -v k="$active" '$1 == k { print $2 }' "$S/profiles")
-    exp=$(date -u -d '+9 hours' +%Y-%m-%dT%H:%M:%SZ)
+    # $S/expiring: session deadline inside the auto-extend lead time.
+    if [ -f "$S/expiring" ]; then
+        exp=$(date -u -d '+5 minutes' +%Y-%m-%dT%H:%M:%SZ)
+    else
+        exp=$(date -u -d '+9 hours' +%Y-%m-%dT%H:%M:%SZ)
+    fi
     handshake=$(date -u -d '-5 minutes' +%Y-%m-%dT%H:%M:%SZ)
     if [ "$daemon" = Connected ]; then
         peer=Connected connected=1 ip=100.92.14.7/16 ip6=fd00:4e42::7 fqdn=laptop.netbird.cloud
@@ -113,6 +118,9 @@ networks_set() {
 case "${1:-}" in
   up)     echo Connected > "$S/daemon"; echo "Connected" ;;
   down)   echo Idle > "$S/daemon"; echo "Disconnected" ;;
+  login)
+    [ "${2:-}" = --extend ] || die "mock: only 'login --extend' is supported"
+    rm -f "$S/expiring"; echo "Session extended." ;;
   logout)
     # Support both: `logout` and `logout --profile <id>`
     if [ "${2:-}" = --profile ]; then
