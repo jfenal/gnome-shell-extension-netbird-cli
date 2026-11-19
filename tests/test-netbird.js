@@ -1,7 +1,7 @@
 // Run with: gjs -m tests/test-netbird.js
 import GLib from 'gi://GLib';
 import System from 'system';
-import {parseProfileList, parsePeers, secondsUntil, formatLocal, errorText, hostAddress, parseNetworks, isProfilesDisabled, STATUS_LABELS, statusLabel} from '../netbird/parse.js';
+import {parseProfileList, parsePeers, secondsUntil, formatLocal, errorText, hostAddress, parseNetworks, isProfilesDisabled, STATUS_LABELS, statusLabel, parseDebugBundle} from '../netbird/parse.js';
 
 let failures = 0;
 function check(name, actual, expected) {
@@ -187,6 +187,20 @@ check('STATUS_LABELS.Idle', STATUS_LABELS.Idle, 'Disconnected');
 check('isProfilesDisabled stderr', isProfilesDisabled({ok: false, stdout: '', stderr: 'Error: profiles are disabled, you cannot use this feature without profiles enabled'}), true);
 check('isProfilesDisabled stdout', isProfilesDisabled({ok: false, stdout: 'profiles are disabled', stderr: ''}), true);
 check('isProfilesDisabled neither', isProfilesDisabled({ok: true, stdout: 'ID  NAME  ACTIVE', stderr: ''}), false);
+
+// `netbird debug bundle` output (client/cmd/debug.go): path on stdout,
+// upload key on success, "upload failed: <reason>" on stderr with exit 1.
+check('debug bundle uploaded',
+    parseDebugBundle('Local file:\n/tmp/netbird.debug.123.zip\nUpload file key:\nabc/def\n', ''),
+    {path: '/tmp/netbird.debug.123.zip', uploadedKey: 'abc/def', uploadError: ''});
+check('debug bundle upload failed keeps path',
+    parseDebugBundle('Local file:\n/tmp/netbird.debug.123.zip\n', 'Error: upload failed: 403\n'),
+    {path: '/tmp/netbird.debug.123.zip', uploadedKey: '', uploadError: '403'});
+check('debug bundle local only',
+    parseDebugBundle('Local file:\n/tmp/b.zip\n', ''),
+    {path: '/tmp/b.zip', uploadedKey: '', uploadError: ''});
+check('debug bundle nothing', parseDebugBundle('', 'Error: failed to connect'),
+    {path: '', uploadedKey: '', uploadError: ''});
 
 if (failures)
     System.exit(1);

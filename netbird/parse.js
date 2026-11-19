@@ -264,3 +264,26 @@ export function parseNetworks(text) {
 
     return networks;
 }
+
+/**
+ * Parse `netbird debug bundle` output (client/cmd/debug.go): the local
+ * path follows "Local file:", the upload key follows "Upload file key:",
+ * and a failed upload prints "upload failed: <reason>" on stderr.
+ *
+ * @param {string} stdout - CLI stdout
+ * @param {string} stderr - CLI stderr
+ * @returns {{path: string, uploadedKey: string, uploadError: string}}
+ */
+export function parseDebugBundle(stdout, stderr) {
+    const after = label => {
+        const lines = stdout.split('\n');
+        const index = lines.findIndex(line => line.trim() === label);
+        return index >= 0 ? (lines[index + 1] ?? '').trim() : '';
+    };
+    const failed = /upload failed:\s*(.*)/.exec(stderr);
+    return {
+        path: after('Local file:'),
+        uploadedKey: after('Upload file key:'),
+        uploadError: failed ? failed[1].trim() : '',
+    };
+}

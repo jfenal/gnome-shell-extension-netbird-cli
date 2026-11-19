@@ -209,4 +209,20 @@ export class NetbirdCli {
             await this.run(['down'], cancellable);
         return result;
     }
+
+    /**
+     * Create a debug bundle.
+     *
+     * @param {{upload: boolean, anonymize: boolean, systemInfo: boolean}} options - bundle options
+     * @param {Gio.Cancellable} cancellable - cancels the call
+     * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>}
+     */
+    async debugBundle({upload, anonymize, systemInfo}, cancellable) {
+        return this.run([
+            'debug', 'bundle',
+            ...upload ? ['-U'] : [],
+            ...anonymize ? ['-A'] : [],
+            `--system-info=${systemInfo}`,
+        ], cancellable);
+    }
 }

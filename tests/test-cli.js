@@ -106,5 +106,18 @@ function createRecordingCli() {
     check('config failure', [config.values, config.error], [null, 'failed to connect to daemon']);
 }
 
+// debugBundle argv
+{
+    const cli = createRecordingCli();
+    await cli.debugBundle({upload: true, anonymize: true, systemInfo: false}, stubCancellable);
+    check('debugBundle upload+anonymize argv', cli._calls[0],
+        ['debug', 'bundle', '-U', '-A', '--system-info=false']);
+}
+{
+    const cli = createRecordingCli();
+    await cli.debugBundle({upload: false, anonymize: false, systemInfo: true}, stubCancellable);
+    check('debugBundle local argv', cli._calls[0], ['debug', 'bundle', '--system-info=true']);
+}
+
 if (failures)
     System.exit(1);

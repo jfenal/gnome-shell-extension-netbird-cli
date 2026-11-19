@@ -6,9 +6,11 @@
 
 import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
+import Gtk from 'gi://Gtk';
 
 import {SETTINGS} from '../netbird/config.js';
 import {Status, errorText} from '../netbird/parse.js';
+import {presentDebugBundleDialog} from './debugBundleDialog.js';
 
 const GROUPS = ['General', 'Connection', 'Network', 'SSH'];
 const SETTINGS_DISABLED = 'update settings are disabled';
@@ -38,6 +40,17 @@ export function createDaemonSettingsPage(model, window) {
         page.add(group);
         return [title, group];
     }));
+
+    const diagnostics = new Adw.PreferencesGroup({title: 'Diagnostics'});
+    // ActionRow, not ButtonRow: ButtonRow needs libadwaita 1.6 (GNOME 47).
+    const bundleRow = new Adw.ActionRow({
+        title: 'Create Debug Bundle',
+        subtitle: 'Collect diagnostics for a bug report',
+        activatable: true,
+    });
+    bundleRow.add_suffix(new Gtk.Image({icon_name: 'go-next-symbolic'}));
+    bundleRow.connect('activated', () => presentDebugBundleDialog(model, window));
+    diagnostics.add(bundleRow);
 
     for (const setting of SETTINGS) {
         const entry = createRow(setting, value => void save(setting, value), () => suppress);
@@ -108,6 +121,8 @@ export function createDaemonSettingsPage(model, window) {
                 setSensitivity();
         }
     }
+
+    page.add(diagnostics);
 
     // Reload whenever the page is shown: settings may change from the CLI.
     page.connect('map', () => void load());
