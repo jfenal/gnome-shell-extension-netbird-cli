@@ -293,3 +293,29 @@ Behaviour (upstream): while connected, GNOME's VPN quick toggle and its menu are
 - [ ] **Step 1:** Update docs and mock CLI (`networks list`, `debug config` fixtures).
 - [ ] **Step 2:** `make test && make pack && make rpm && make screenshot` → all succeed.
 - [ ] **Step 3:** Commit `docs: 0.2.0`; push → Copr webhook build succeeds.
+
+### Task 6b: Headless nested-Wayland smoke test (`make smoke`)
+
+Added at the user's request: every later task is exercised in a real nested GNOME Shell (Wayland), not only unit tests.
+
+**Files:**
+- Create: `tools/smoke/run.sh`, `tools/smoke/inner.sh`, `tools/smoke/bin/netbird` (stateful mock CLI)
+- Modify: `Makefile` (target `smoke`), `README.md` (Development list)
+- Reuse: `tools/screenshot/unsafe@local` (enables `org.gnome.Shell.Eval`)
+
+**Interfaces:**
+- Produces: `make smoke` → exit 0 and `dist/smoke/*.png` on success; non-zero with the offending log lines on failure. Later tasks extend `tools/smoke/inner.sh` with a check for their feature and extend the mock CLI with the commands they call.
+
+Mock CLI (`tools/smoke/bin/netbird`): keeps state in `$SMOKE_STATE` (a dir): `up` → Connected, `down` → Idle, `profile select <id>`, `profile add/rename/remove`, `logout`; `status --json` reflects the state (two peers as in `tools/screenshot/bin/netbird`); `networks list` prints the real CLI format (one CIDR route, one domain route, one `0.0.0.0/0` exit node) and `networks select/deselect` update it; `debug config` prints protojson-style JSON with every key used by Task 9 plus `"mDMManagedFields": []`; `debug bundle` prints `Local file:\n/tmp/netbird.debug.smoke.zip`. Every invocation appends its argv to `$SMOKE_STATE/calls.log`.
+
+Smoke sequence (inner.sh, inside `dbus-run-session`, `gnome-shell --headless --wayland --no-x11 --virtual-monitor 1600x1000`, `GSETTINGS_BACKEND=memory`, mock CLI first in PATH):
+1. Enable `unsafe@local` and the extension; assert `gnome-extensions info` State is `ACTIVE` (or `ENABLED` on 46).
+2. Via `Eval`: find the Quick Settings tile titled "NetBird CLI"; click it → `calls.log` contains `up`; wait one poll; tile `checked === true`; click again → `down`.
+3. Open the tile menu, screenshot `dist/smoke/menu.png`.
+4. Run `gnome-extensions prefs <uuid>` with `WAYLAND_DISPLAY` set to the nested shell's socket; wait; screenshot `dist/smoke/prefs.png`; close it.
+5. 5× `gnome-extensions disable` / `enable` cycles.
+6. Fail if the shell log contains `JS ERROR`, `JS WARNING`, `Gjs-CRITICAL`, or `<uuid>` together with `error`, or if any step's assertion failed; print the matching lines.
+
+- [ ] **Step 1:** Write the mock CLI and the harness; `make smoke` passes on the current branch.
+- [ ] **Step 2:** Break it on purpose (temporarily `throw` in `enable()`), confirm `make smoke` fails with the JS ERROR line, revert.
+- [ ] **Step 3:** Commit `test: headless nested-Wayland smoke test`.
