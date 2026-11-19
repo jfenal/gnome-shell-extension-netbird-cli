@@ -1,7 +1,7 @@
 %global uuid netbird-cli@jfenal.github.io
 
 Name:           gnome-shell-extension-netbird-cli
-Version:        0.2.0
+Version:        0.2.1
 # COPR builds from main add a snapshot suffix (commit date + hash), see
 # .copr/Makefile, so every push upgrades; local builds stay plain.
 Release:        1%{?snapinfo}%{?dist}
@@ -58,6 +58,9 @@ gjs -m tests/test-auto-extend.js
 %{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 
 %changelog
+* Thu Nov 19 2026 Jérôme Fenal <jfenal@redhat.com> - 0.2.1-1
+- Extension Settings entry in the Quick Settings menu
+
 * Thu Nov 19 2026 Jérôme Fenal <jfenal@redhat.com> - 0.2.0-1
 - NetBird window: Home, Peers, Networks, Profiles, Settings pages
 - Exit node and network resource selection
