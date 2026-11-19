@@ -16,6 +16,7 @@ import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js'
 import {NetbirdCli, Status} from './netbird/cli.js';
 import {errorText, formatLocal, hostAddress, secondsUntil} from './netbird/parse.js';
 import {StatusIcons} from './shell/icons.js';
+import {pollIntervalSeconds} from './shell/polling.js';
 
 const STATUS_LABELS = {
     [Status.CONNECTED]: 'Connected',
@@ -41,7 +42,7 @@ function isCancelled(e) {
 
 const NetbirdToggle = GObject.registerClass(
 class NetbirdToggle extends QuickSettings.QuickMenuToggle {
-    _init(settings, cli, statusIcons, extension) {
+    _init(settings, cli, statusIcons, extension, indicator) {
         super._init({
             title: 'NetBird CLI',
             gicon: statusIcons.forState('Idle'),
@@ -52,6 +53,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         this._cli = cli;
         this._statusIcons = statusIcons;
         this._extension = extension;
+        this._indicator = indicator;
         this._status = Status.UNAVAILABLE;
         this._data = null;
         this._lastError = null;
@@ -335,6 +337,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
                 if (!this._lifeCancellable.is_cancelled()) {
                     this._sync();
                     this.refresh();
+                    this._indicator?._onActionCompleted();
                 }
             }
         }
@@ -360,11 +363,17 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
         this._icon = this._addIndicator();
         this._icon.gicon = this._statusIcons.forState('Connected');
         this._icon.visible = false;
+        this._menuOpen = false;
+        this._lastActionTime = null;
+        this._debugEnabled = GLib.getenv('NETBIRD_DEBUG') === '1';
 
-        this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings), this._statusIcons, extension);
+        this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings), this._statusIcons, extension, this);
         this._toggle.connectObject(
             'notify::checked', () => this._syncIcon(),
             'notify::gicon', () => this._syncIcon(),
+            this);
+        this._toggle.menu.connectObject(
+            'open-state-changed', (_menu, open) => this._onMenuOpenStateChanged(open),
             this);
         this.quickSettingsItems.push(this._toggle);
 
@@ -376,12 +385,37 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
         this._startPolling();
     }
 
+    _onMenuOpenStateChanged(open) {
+        this._menuOpen = open;
+        if (open)
+            this._toggle.refresh();
+        this._startPolling();
+    }
+
+    _onActionCompleted() {
+        this._lastActionTime = GLib.get_monotonic_time() / 1000000;
+        this._startPolling();
+    }
+
     _startPolling() {
         this._stopPolling();
-        const interval = Math.max(1, this._settings.get_uint('poll-interval'));
+        const configured = Math.max(1, this._settings.get_uint('poll-interval'));
+        const secondsSinceAction = this._lastActionTime
+            ? (GLib.get_monotonic_time() / 1000000) - this._lastActionTime
+            : Number.MAX_SAFE_INTEGER;
+        const interval = pollIntervalSeconds({
+            configured,
+            menuOpen: this._menuOpen,
+            secondsSinceAction,
+        });
+
+        if (this._debugEnabled)
+            console.debug(`NetBird: scheduling poll in ${interval}s (configured=${configured}, menuOpen=${this._menuOpen}, secondsSinceAction=${Math.round(secondsSinceAction)})`);
+
         this._pollId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, interval, () => {
             this._toggle.refresh();
-            return GLib.SOURCE_CONTINUE;
+            this._startPolling();
+            return GLib.SOURCE_REMOVE;
         });
     }
 
@@ -400,6 +434,7 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
     destroy() {
         this._stopPolling();
         this._toggle.disconnectObject(this);
+        this._toggle.menu.disconnectObject(this);
         this._settingsIds.forEach(id => this._settings.disconnect(id));
         this._settingsIds = [];
         this.quickSettingsItems.forEach(item => item.destroy());
