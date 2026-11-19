@@ -3,7 +3,45 @@
 case "$1 $2" in
   "status --json")
     exp=$(date -u -d '+9 hours' +%Y-%m-%dT%H:%M:%SZ)
-    printf '{"daemonStatus":"Connected","netbirdIp":"100.92.14.7/16","netbirdIpv6":"fd00:4e42::7","fqdn":"laptop.netbird.cloud","profileName":"work","peers":{"total":9,"connected":8},"sessionExpiresAt":"%s"}\n' "$exp"
+    handshake=$(date -u -d '-5 minutes' +%Y-%m-%dT%H:%M:%SZ)
+    cat <<EOF
+{
+  "daemonStatus": "Connected",
+  "netbirdIp": "100.92.14.7/16",
+  "netbirdIpv6": "fd00:4e42::7",
+  "fqdn": "laptop.netbird.cloud",
+  "profileName": "work",
+  "peers": {
+    "total": 2,
+    "connected": 1,
+    "details": [
+      {
+        "fqdn": "server.netbird.cloud",
+        "netbirdIp": "100.92.1.1/16",
+        "netbirdIpv6": "fd00:4e42::1/64",
+        "status": "Connected",
+        "connectionType": "P2P",
+        "latency": 15000000,
+        "transferReceived": 1048576,
+        "transferSent": 2097152,
+        "lastWireguardHandshake": "$handshake"
+      },
+      {
+        "fqdn": "idle-peer.netbird.cloud",
+        "netbirdIp": "100.92.2.2/16",
+        "netbirdIpv6": "",
+        "status": "Idle",
+        "connectionType": "",
+        "latency": 0,
+        "transferReceived": 0,
+        "transferSent": 0,
+        "lastWireguardHandshake": "0001-01-01T00:00:00Z"
+      }
+    ]
+  },
+  "sessionExpiresAt": "$exp"
+}
+EOF
     ;;
   "profile list")
     printf 'ID        NAME      ACTIVE\ndefault   personal  \na1b2c3d4  work      *\n'

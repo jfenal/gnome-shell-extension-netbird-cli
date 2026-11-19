@@ -95,3 +95,61 @@ export function formatLocal(isoString) {
 export function hostAddress(cidr) {
     return cidr.split('/')[0];
 }
+
+/**
+ * Parse peers from `netbird status --json` output.
+ *
+ * @param {object} statusJson - parsed `netbird status --json`
+ * @returns {{name: string, fqdn: string, ip: string, ipv6: string, state: string, connType: string, latencyMs: number, bytesRx: number, bytesTx: number, lastHandshake: number}[]}
+ */
+export function parsePeers(statusJson) {
+    const details = statusJson?.peers?.details;
+    if (!Array.isArray(details))
+        return [];
+
+    const peers = details.map(peer => {
+        const fqdn = peer.fqdn || '';
+        const ip = hostAddress(peer.netbirdIp || '');
+        const ipv6 = hostAddress(peer.netbirdIpv6 || '');
+        const name = fqdn.split('.')[0] || ip || ipv6 || 'Unknown Peer';
+
+        // Parse lastWireguardHandshake: zero time → 0, else unix timestamp
+        let lastHandshake = 0;
+        const handshakeStr = peer.lastWireguardHandshake || '';
+        if (handshakeStr && handshakeStr !== '0001-01-01T00:00:00Z') {
+            const when = GLib.DateTime.new_from_iso8601(handshakeStr, null);
+            if (when)
+                lastHandshake = when.to_unix();
+        }
+
+        return {
+            name,
+            fqdn,
+            ip,
+            ipv6,
+            state: peer.status || '',
+            connType: peer.connectionType || '',
+            latencyMs: Math.round((peer.latency || 0) / 1e6),
+            bytesRx: peer.transferReceived || 0,
+            bytesTx: peer.transferSent || 0,
+            lastHandshake,
+        };
+    });
+
+    // Sort: Connected, Connecting, then others; then by name
+    peers.sort((a, b) => {
+        const stateOrder = (state) => {
+            if (state === 'Connected')
+                return 0;
+            if (state === 'Connecting')
+                return 1;
+            return 2;
+        };
+        const stateDiff = stateOrder(a.state) - stateOrder(b.state);
+        if (stateDiff !== 0)
+            return stateDiff;
+        return a.name.localeCompare(b.name);
+    });
+
+    return peers;
+}

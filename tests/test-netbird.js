@@ -1,7 +1,7 @@
 // Run with: gjs -m tests/test-netbird.js
 import GLib from 'gi://GLib';
 import System from 'system';
-import {parseProfileList, secondsUntil, formatLocal, errorText, hostAddress} from '../netbird/parse.js';
+import {parseProfileList, parsePeers, secondsUntil, formatLocal, errorText, hostAddress} from '../netbird/parse.js';
 
 let failures = 0;
 function check(name, actual, expected) {
@@ -43,6 +43,54 @@ check('errorText fallback', errorText({stdout: '', stderr: ''}, 'fb'), 'fb');
 
 check('host of cidr', hostAddress('100.92.14.7/16'), '100.92.14.7');
 check('empty', hostAddress(''), '');
+
+// parsePeers tests
+check('parsePeers empty', parsePeers({}), []);
+check('parsePeers no details', parsePeers({peers: {}}), []);
+
+const peerFixture = {
+    peers: {
+        details: [
+            {
+                fqdn: 'server.netbird.cloud',
+                netbirdIp: '100.92.1.1/16',
+                netbirdIpv6: 'fd00:4e42::1/64',
+                status: 'Connected',
+                connectionType: 'P2P',
+                latency: 12500000,
+                transferReceived: 1024000,
+                transferSent: 2048000,
+                lastWireguardHandshake: '2026-11-19T10:00:00Z',
+            },
+            {
+                fqdn: 'idle-peer.netbird.cloud',
+                netbirdIp: '100.92.2.2/16',
+                netbirdIpv6: '',
+                status: 'Idle',
+                connectionType: '',
+                latency: 0,
+                transferReceived: 0,
+                transferSent: 0,
+                lastWireguardHandshake: '0001-01-01T00:00:00Z',
+            },
+        ],
+    },
+};
+
+const peers = parsePeers(peerFixture);
+check('parsePeers count', peers.length, 2);
+check('parsePeers connected first', peers[0].state, 'Connected');
+check('parsePeers latencyMs', peers[0].latencyMs, 13);
+check('parsePeers zero handshake', peers[1].lastHandshake, 0);
+check('parsePeers nonzero handshake', typeof peers[0].lastHandshake === 'number' && peers[0].lastHandshake > 0, true);
+
+check('parsePeers unicode FQDN name',
+    parsePeers({peers: {details: [{fqdn: 'büro-pc.netbird.cloud', netbirdIp: '100.92.3.3/16', status: 'Connected'}]}})[0].name,
+    'büro-pc');
+
+check('parsePeers fallback to IP when no FQDN',
+    parsePeers({peers: {details: [{fqdn: '', netbirdIp: '100.92.4.4/16', status: 'Idle'}]}})[0].name,
+    '100.92.4.4');
 
 if (failures)
     System.exit(1);
