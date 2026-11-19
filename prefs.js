@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import Gdk from 'gi://Gdk';
 import GLib from 'gi://GLib';
+import Gtk from 'gi://Gtk';
 import {ExtensionPreferences} from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
 
 import {NetbirdCli} from './netbird/cli.js';
@@ -15,6 +17,10 @@ import {createExtensionPage} from './prefs/extensionPage.js';
 export default class NetbirdPreferences extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const settings = this.getSettings();
+        // Ship our own NetBird icons: the `netbird` app icon only exists
+        // system-wide when NetBird's desktop UI is installed.
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+            .add_search_path(this.dir.get_child('icons').get_path());
         const cli = new NetbirdCli(settings);
         const model = new WindowModel(cli, 2);
 

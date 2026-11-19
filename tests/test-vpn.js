@@ -69,6 +69,25 @@ check('cancelled call rejects', threw, true);
 await disconnectOtherVpns(null, new Gio.Cancellable());
 check('no NM client is a no-op', true, true);
 
+// Custom `netbird up --interface-name`: NetBird's own connection is spared.
+check('custom interface is NetBird', isNetBirdConnection(connection('wireguard', 'nb0'), 'nb0'), true);
+check('wt0 is not NetBird when renamed', isNetBirdConnection(connection('wireguard', 'wt0'), 'nb0'), false);
+{
+    const list = [active('netbird-renamed', 'wireguard', 'nb0'), active('wt0-other', 'wireguard', 'wt0')];
+    const done = [];
+    const c = {
+        get_active_connections: () => list,
+        deactivate_connection_async(a, _c, cb) {
+            done.push(a.id);
+            a.state = DEACTIVATED;
+            cb(this, null);
+        },
+        deactivate_connection_finish: () => true,
+    };
+    await disconnectOtherVpns(c, new Gio.Cancellable(), 'nb0');
+    check('renamed NetBird interface is not disconnected', done, ['wt0-other']);
+}
+
 if (failures) {
     print(`\n${failures} failure(s)`);
     System.exit(1);

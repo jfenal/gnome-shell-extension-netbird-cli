@@ -14,7 +14,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 
 import {NetbirdCli, Status} from './netbird/cli.js';
-import {errorText, formatLocal, hostAddress, secondsUntil, STATUS_LABELS} from './netbird/parse.js';
+import {errorText, formatLocal, hostAddress, isProfilesDisabled, secondsUntil, STATUS_LABELS} from './netbird/parse.js';
 import {StatusIcons} from './shell/icons.js';
 import {pollIntervalSeconds} from './shell/polling.js';
 import {VpnButtonGuard} from './shell/vpnButtonGuard.js';
@@ -58,6 +58,8 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         this._refreshing = false;
         this._warnedExpiry = null;
         this._autoExtendDeadline = null;
+        this._profilesDisabled = false;
+        this._guardSawConnected = false;
         this._autoExtendTimeoutId = 0;
         this._lastConnected = false;
         this._notificationSource = null;
@@ -143,13 +145,28 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
                 Main.panel.statusArea.quickSettings, new InjectionManager(),
                 error => this._notify('GNOME VPN could not be disconnected', error.message ?? String(error)));
             this._vpnGuard.setBlocked(this.isConnected);
+            this._updateVpnInterface();
         } else if (!wanted && this._vpnGuard) {
             this._vpnGuard.destroy();
             this._vpnGuard = null;
         }
     }
 
+    // The guard must recognise NetBird's own WireGuard connection, whose
+    // interface name is configurable (`netbird up --interface-name`).
+    async _updateVpnInterface() {
+        const config = await this._cli.config(this._lifeCancellable).catch(() => null);
+        if (this._lifeCancellable.is_cancelled())
+            return;
+        const name = config?.values?.interfaceName;
+        if (name)
+            this._vpnGuard?.setInterfaceName(name);
+    }
+
     _sync() {
+        if (this._vpnGuard && this.isConnected && !this._guardSawConnected)
+            this._updateVpnInterface();
+        this._guardSawConnected = this.isConnected;
         this._vpnGuard?.setBlocked(this.isConnected);
         const data = this._data;
         const statusLabel = STATUS_LABELS[this._status] ?? this._status;
@@ -189,7 +206,10 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
 
         const profile = data?.profileName;
         this._profileMenu.label.text = profile ? `Profile: ${profile}` : 'Profile';
-        this._profileMenu.visible = this._status !== Status.UNAVAILABLE;
+        // Profiles disabled by the daemon stay hidden until it restarts.
+        if (this._status === Status.UNAVAILABLE)
+            this._profilesDisabled = false;
+        this._profileMenu.visible = this._status !== Status.UNAVAILABLE && !this._profilesDisabled;
         this._extendItem.visible = Boolean(expiry);
         this._extendItem.reactive = !this._pendingAction;
         this._copyIpItem.visible = Boolean(this._ipAddress);
@@ -221,11 +241,8 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         if (this._lifeCancellable.is_cancelled())
             return;
 
-        // Hide submenu if profiles are disabled
-        const profilesDisabled = result && !result.ok &&
-            (result.stderr.includes('profiles are disabled') ||
-             result.stdout.includes('profiles are disabled'));
-        if (profilesDisabled) {
+        if (result && isProfilesDisabled(result)) {
+            this._profilesDisabled = true;
             this._profileMenu.visible = false;
             return;
         }
@@ -287,6 +304,22 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         if (remaining === null || remaining <= 0 || remaining > warnMinutes * 60)
             return;
         this._warnExpiry(expiresAt, remaining);
+    }
+
+    _checkSessionExpiry() {
+        // Track session expiry: notify when the session expires after we saw Connected.
+        if (this._status === Status.CONNECTED) {
+            this._lastConnected = true;
+        } else if ((this._status === Status.SESSION_EXPIRED || this._status === Status.NEEDS_LOGIN) &&
+                   this._lastConnected) {
+            this._lastConnected = false;
+            this._notify(
+                'NetBird Session Expired',
+                'Sign in again to reconnect to your NetBird network.',
+                [['Sign In', () => this._runAction('up')]]);
+        } else if (this._status === Status.UNAVAILABLE) {
+            this._lastConnected = false;
+        }
     }
 
     _warnExpiry(expiresAt, remaining) {

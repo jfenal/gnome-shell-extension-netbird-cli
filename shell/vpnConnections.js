@@ -9,19 +9,19 @@ const DEACTIVATING = 3;
 const DEACTIVATED = 4;
 
 // NetBird's WireGuard interface (`netbird up --interface-name`, default wt0).
-export function isNetBirdConnection(connection) {
+export function isNetBirdConnection(connection, interfaceName = 'wt0') {
     return connection.get_connection_type() === 'wireguard' &&
-        connection.get_interface_name() === 'wt0';
+        connection.get_interface_name() === interfaceName;
 }
 
-export async function disconnectOtherVpns(client, cancellable) {
+export async function disconnectOtherVpns(client, cancellable, interfaceName = 'wt0') {
     if (cancellable.is_cancelled())
         throw new Error('VPN disconnection cancelled');
     const activeVpns = (client?.get_active_connections() ?? []).filter(active => {
         const connection = active.connection;
         const type = connection?.get_connection_type();
         return ['vpn', 'wireguard'].includes(type) &&
-            !isNetBirdConnection(connection) &&
+            !isNetBirdConnection(connection, interfaceName) &&
             active.get_state() !== DEACTIVATED;
     });
     await Promise.all(activeVpns.map(async active => {

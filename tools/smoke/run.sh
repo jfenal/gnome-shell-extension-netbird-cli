@@ -52,7 +52,7 @@ dbus-run-session -- "$HERE/inner.sh" 3>&1 > "$WORK/session.log" 2>&1 || rc=$?
 # (session.log, where dbus-daemon puts activated services' output).
 # Printed even when an earlier step failed: they usually explain why.
 bad=$(cat "$WORK/shell.log" "$WORK/session.log" 2>/dev/null | grep \
-    -e 'JS ERROR' -e 'JS WARNING' -e 'Gjs-CRITICAL' -e "$UUID.*[Ee][Rr][Rr][Oo][Rr]" \
+    -e 'JS ERROR' -e 'JS WARNING' -e 'Gjs-CRITICAL' -e "$UUID.*[Ee][Rr][Rr][Oo][Rr]" -e 'CRITICAL.*NetBird' \
     -e "[Ee][Rr][Rr][Oo][Rr].*$UUID" || true)
 [ -z "$bad" ] || { echo "smoke: offending log lines:" >&2; echo "$bad" | head -40 >&2; }
 
@@ -61,4 +61,4 @@ bad=$(cat "$WORK/shell.log" "$WORK/session.log" 2>/dev/null | grep \
 [ -z "$bad" ] || fail "step 6: errors in shell/prefs logs (above)"
 
 rm -rf "$WORK"
-echo "smoke: OK: $(ls "$OUT"/*.png | tr "\n" " ")"
+echo "smoke: OK: $(ls "$OUT"/*.png 2>/dev/null | tr "\n" " ")"

@@ -116,7 +116,10 @@ networks_set() {
 }
 
 case "${1:-}" in
-  up)     echo Connected > "$S/daemon"; echo "Connected" ;;
+  up)
+    # Like client/cmd/up.go: when connected, exit before applying any flags.
+    if [ "$(cat "$S/daemon")" = Connected ]; then echo "Already connected"; exit 0; fi
+    echo Connected > "$S/daemon"; echo "Connected" ;;
   down)   echo Idle > "$S/daemon"; echo "Disconnected" ;;
   login)
     [ "${2:-}" = --extend ] || die "mock: only 'login --extend' is supported"

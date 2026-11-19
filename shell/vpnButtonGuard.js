@@ -19,6 +19,7 @@ export class VpnButtonGuard {
         this._blocked = false;
         this._entries = [];
         this._updating = false;
+        this._interfaceName = 'wt0';
         // Shell may create its network indicator after extensions are enabled.
         this._indicatorSignal = quickSettings._indicators.connect('child-added', () =>
             this.setBlocked(this._blocked));
@@ -54,11 +55,25 @@ export class VpnButtonGuard {
         this._disconnectInBackground();
     }
 
+    // NetBird's WireGuard interface (`netbird up --interface-name`).
+    setInterfaceName(name) {
+        if (!name || name === this._interfaceName)
+            return;
+        this._interfaceName = name;
+        if (!this._toggle)
+            return;
+        for (const connection of [...this._toggle._items.keys()]) {
+            if (isNetBirdConnection(connection, name))
+                this._toggle._removeConnection(connection);
+        }
+        this._toggle._sync();
+    }
+
     disconnectActiveVpns() {
         if (!this._toggle)
             this._attach();
         if (!this._disconnecting) {
-            this._disconnecting = disconnectOtherVpns(this._toggle?._client, this._cancellable)
+            this._disconnecting = disconnectOtherVpns(this._toggle?._client, this._cancellable, this._interfaceName)
                 .finally(() => {
                     this._disconnecting = null;
                 });
@@ -103,12 +118,13 @@ export class VpnButtonGuard {
             return;
 
         // NetBird owns wt0; Shell must not promote it over the user's VPN profile.
+        const guard = this;
         this._injections.overrideMethod(this._toggle, '_shouldHandleConnection', original =>
             function (connection) {
-                return !isNetBirdConnection(connection) && original.call(this, connection);
+                return !isNetBirdConnection(connection, guard._interfaceName) && original.call(this, connection);
             });
         for (const connection of [...this._toggle._items.keys()]) {
-            if (isNetBirdConnection(connection))
+            if (isNetBirdConnection(connection, this._interfaceName))
                 this._toggle._removeConnection(connection);
         }
         // At login the toggle can exist before its NM client; setClient() syncs later.

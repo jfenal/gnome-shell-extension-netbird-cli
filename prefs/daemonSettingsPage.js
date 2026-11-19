@@ -8,7 +8,7 @@ import Adw from 'gi://Adw';
 import GLib from 'gi://GLib';
 import Gtk from 'gi://Gtk';
 
-import {SETTINGS} from '../netbird/config.js';
+import {SETTINGS, settingsWritable} from '../netbird/config.js';
 import {Status, errorText} from '../netbird/parse.js';
 import {presentDebugBundleDialog} from './debugBundleDialog.js';
 
@@ -26,7 +26,7 @@ export function createDaemonSettingsPage(model, window) {
     const page = new Adw.PreferencesPage({
         title: 'Settings',
         iconName: 'emblem-system-symbolic',
-        description: 'Saving a setting reconnects NetBird.',
+        description: 'Saving a setting briefly connects or reconnects NetBird.',
     });
 
     const rows = new Map(); // key → {setting, row, get(), set(value)}
@@ -59,10 +59,13 @@ export function createDaemonSettingsPage(model, window) {
     }
 
     function setSensitivity() {
+        // Writes run `netbird up`: only from Idle or Connected.
+        const writable = settingsWritable(model.state.status);
+        const stateReason = writable ? null : 'Available when NetBird is connected or disconnected';
         for (const {setting, row} of rows.values()) {
             const isManaged = managed.has(setting.key);
-            row.sensitive = !busy && !readOnlyReason && !isManaged;
-            row.tooltip_text = isManaged ? 'Managed by your organization' : readOnlyReason;
+            row.sensitive = !busy && writable && !readOnlyReason && !isManaged;
+            row.tooltip_text = isManaged ? 'Managed by your organization' : readOnlyReason ?? stateReason;
         }
     }
 
@@ -82,7 +85,7 @@ export function createDaemonSettingsPage(model, window) {
         }
         if (!readOnlyReason?.includes(SETTINGS_DISABLED)) {
             readOnlyReason = null;
-            page.description = 'Saving a setting reconnects NetBird.';
+            page.description = 'Saving a setting briefly connects or reconnects NetBird.';
         }
         managed = config.managed;
         suppress = true;
@@ -94,8 +97,10 @@ export function createDaemonSettingsPage(model, window) {
     }
 
     async function save(setting, value) {
-        if (busy)
+        if (busy || !settingsWritable(model.state.status)) {
+            void load(); // revert the row to the daemon's value
             return;
+        }
         busy = true;
         setSensitivity();
         try {
@@ -126,6 +131,11 @@ export function createDaemonSettingsPage(model, window) {
 
     // Reload whenever the page is shown: settings may change from the CLI.
     page.connect('map', () => void load());
+    const changedId = model.connect('changed', () => {
+        if (!busy)
+            setSensitivity();
+    });
+    page.connect('destroy', () => model.disconnect(changedId));
     void load();
 
     return page;

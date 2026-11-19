@@ -1,6 +1,6 @@
 // Run with: gjs -m tests/test-config.js
 import System from 'system';
-import {SETTINGS, parseConfig, flagsFor} from '../netbird/config.js';
+import {SETTINGS, parseConfig, flagsFor, settingsWritable} from '../netbird/config.js';
 
 let failures = 0;
 function check(name, actual, expected) {
@@ -24,7 +24,7 @@ const CONFIG = JSON.stringify({
     serverSSHAllowed: false,
     disableDns: true,
     sshJWTCacheTTL: 0,
-    mDMManagedFields: ['managementUrl'],
+    mDMManagedFields: ['managementURL'],
 });
 
 const parsed = parseConfig(CONFIG);
@@ -64,6 +64,20 @@ check('every setting has a flag, type and group',
     true);
 check('setting keys unique', new Set(SETTINGS.map(s => s.key)).size, SETTINGS.length);
 check('21 settings', SETTINGS.length, 21);
+
+// mDMManagedFields uses the MDM policy key names (client/mdm/policy.go),
+// which differ from the protojson field names for some settings.
+const mdm = parseConfig(JSON.stringify({serverSSHAllowed: false, managementUrl: 'x',
+    mDMManagedFields: ['allowServerSSH', 'managementURL']}));
+check('MDM names map to setting keys',
+    [mdm.managed.has('serverSSHAllowed'), mdm.managed.has('managementUrl')], [true, true]);
+
+// Writes go through `netbird up`: only safe from Idle or Connected (NeedsLogin
+// would start an SSO login, Connecting would be aborted).
+check('writable when Idle/Connected', [settingsWritable('Idle'), settingsWritable('Connected')], [true, true]);
+check('not writable otherwise',
+    ['NeedsLogin', 'SessionExpired', 'LoginFailed', 'Connecting', 'Unavailable', null].map(settingsWritable),
+    [false, false, false, false, false, false]);
 
 if (failures) {
     print(`\n${failures} failure(s)`);

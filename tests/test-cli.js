@@ -72,10 +72,22 @@ function createRecordingCli() {
     check('applySettings while disconnected argv',
         cli._calls, [['up', '--disable-dns=true'], ['down']]);
 }
+// `netbird up` exits with "Already connected" before applying flags when
+// connected (client/cmd/up.go): disconnect first.
 {
     const cli = createRecordingCli();
     await cli.applySettings({mtu: 1380}, true, stubCancellable);
-    check('applySettings while connected argv', cli._calls, [['up', '--mtu=1380']]);
+    check('applySettings while connected argv', cli._calls, [['down'], ['up', '--mtu=1380']]);
+}
+{
+    const cli = createRecordingCli();
+    cli.run = async args => {
+        cli._calls.push(args);
+        return {ok: args.length !== 2 || args[0] !== 'up', stdout: '', stderr: args.length === 2 ? 'refused' : ''};
+    };
+    const result = await cli.applySettings({enableSSHRoot: true}, true, stubCancellable);
+    check('applySettings while connected, refused: reconnects without flags',
+        [cli._calls, result.ok], [[['down'], ['up', '--enable-ssh-root=true'], ['up']], false]);
 }
 {
     const cli = createRecordingCli();

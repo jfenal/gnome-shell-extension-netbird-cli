@@ -12,11 +12,13 @@
  * @property {string} title
  * @property {string} [subtitle]
  * @property {number} [max] - upper bound for uint settings
+ * @property {string} [mdm] - name in mDMManagedFields when it differs from key
+ *   (MDM policy keys, client/mdm/policy.go)
  */
 
 /** @type {Setting[]} */
 export const SETTINGS = [
-    {key: 'serverSSHAllowed', type: 'bool', flag: '--allow-server-ssh', group: 'General',
+    {key: 'serverSSHAllowed', mdm: 'allowServerSSH', type: 'bool', flag: '--allow-server-ssh', group: 'General',
         title: 'Allow SSH', subtitle: 'Allow NetBird SSH access to this peer'},
     {key: 'disableAutoConnect', type: 'bool', flag: '--disable-auto-connect', group: 'General',
         title: 'Disable Auto-Connect', subtitle: 'Do not connect when the NetBird service starts'},
@@ -27,7 +29,7 @@ export const SETTINGS = [
     {key: 'blockInbound', type: 'bool', flag: '--block-inbound', group: 'General',
         title: 'Block Inbound Connections', subtitle: 'Block inbound peer connections'},
 
-    {key: 'managementUrl', type: 'string', flag: '--management-url', group: 'Connection',
+    {key: 'managementUrl', mdm: 'managementURL', type: 'string', flag: '--management-url', group: 'Connection',
         title: 'Management URL'},
     {key: 'interfaceName', type: 'string', flag: '--interface-name', group: 'Connection',
         title: 'Interface Name'},
@@ -89,7 +91,11 @@ export function parseConfig(json) {
         else
             values[setting.key] = String(value ?? '');
     }
-    return {values, managed: new Set(raw.mDMManagedFields ?? [])};
+    const policyNames = new Set(raw.mDMManagedFields ?? []);
+    const managed = new Set(SETTINGS
+        .filter(setting => policyNames.has(setting.mdm ?? setting.key))
+        .map(setting => setting.key));
+    return {values, managed};
 }
 
 /**
@@ -107,4 +113,15 @@ export function flagsFor(changes) {
             throw new Error(`unknown setting: ${key}`);
         return `${setting.flag}=${value}`;
     });
+}
+
+/**
+ * Settings are written with `netbird up`: from NeedsLogin/SessionExpired that
+ * would start an SSO login, and a connection attempt would be aborted.
+ *
+ * @param {string|null} status - daemon status
+ * @returns {boolean}
+ */
+export function settingsWritable(status) {
+    return status === 'Idle' || status === 'Connected';
 }

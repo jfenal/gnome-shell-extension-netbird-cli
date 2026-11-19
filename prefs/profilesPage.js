@@ -127,66 +127,68 @@ export function createProfilesPage(model, window) {
                 });
         });
 
-    const removeButton = createActionRow(
-        'Remove Profile',
-        'Delete this local profile configuration',
-        'user-trash-symbolic',
-        () => {
-            const selected = profileCombo.selected;
-            if (selected < 0 || selected >= profiles.length)
-                return;
+    actionsGroup.add(addButton);
+    actionsGroup.add(renameButton);
+    actionsGroup.add(signOutButton);
+    page.add(actionsGroup);
 
-            const profileId = profiles[selected].id;
-            const isActive = profiles[selected].active;
+    // Inactive profiles, each removable (the active one cannot be removed).
+    const othersGroup = new Adw.PreferencesGroup({title: 'Other Profiles'});
+    page.add(othersGroup);
+    let otherRows = [];
 
-            if (isActive) {
-                window.add_toast(new Adw.Toast({
-                    title: 'Cannot remove the active profile',
-                }));
-                return;
-            }
-
-            confirmAction(
+    function rebuildOthers() {
+        for (const row of otherRows)
+            othersGroup.remove(row);
+        otherRows = profiles.filter(p => !p.active).map(profile => {
+            const row = new Adw.ActionRow({title: profile.name, use_markup: false});
+            const remove = new Gtk.Button({
+                icon_name: 'user-trash-symbolic',
+                tooltip_text: 'Remove Profile',
+                valign: Gtk.Align.CENTER,
+                css_classes: ['flat', 'error'],
+            });
+            remove.connect('clicked', () => confirmAction(
                 window,
-                'Remove This Profile?',
+                `Remove “${profile.name}”?`,
                 'This removes the local NetBird profile and cannot be undone.',
                 'Remove',
                 'destructive',
                 async () => {
-                    const result = await model.run(['profile', 'remove', profileId]);
+                    const result = await model.run(['profile', 'remove', profile.id]);
                     if (!result.ok) {
                         window.add_toast(new Adw.Toast({
                             title: errorText(result, 'Failed to remove profile'),
                         }));
                     }
-                });
-        },
-        true);
-
-    actionsGroup.add(addButton);
-    actionsGroup.add(renameButton);
-    actionsGroup.add(signOutButton);
-    actionsGroup.add(removeButton);
-    page.add(actionsGroup);
+                }));
+            row.add_suffix(remove);
+            othersGroup.add(row);
+            return row;
+        });
+        othersGroup.visible = otherRows.length > 0;
+    }
+    let profilesKey = null;
 
     const signalId = model.connect('changed', (state) => {
         profiles = state.profiles;
         wasConnected = state.status === Status.CONNECTED;
+
+        page.visible = !state.features.profilesDisabled;
+
+        // Rebuild only on change: replacing the model every poll would reset
+        // an open dropdown under the user.
+        const key = JSON.stringify(profiles.map(p => [p.id, p.name, p.active]));
+        if (key === profilesKey)
+            return;
+        profilesKey = key;
 
         suppress = true;
         profileCombo.model = Gtk.StringList.new(profiles.map(p => p.name));
         const activeIndex = profiles.findIndex(p => p.active);
         profileCombo.selected = activeIndex >= 0 ? activeIndex : 0;
         suppress = false;
-
-        // Hide page if profiles are disabled
-        page.visible = !state.features.profilesDisabled;
-
-        // Disable Remove button if the selected profile is active
-        if (profileCombo.selected >= 0 && profileCombo.selected < profiles.length) {
-            const selectedProfile = profiles[profileCombo.selected];
-            removeButton.sensitive = selectedProfile && !selectedProfile.active;
-        }
+        rebuildOthers();
     });
 
     page.connect('destroy', () => {

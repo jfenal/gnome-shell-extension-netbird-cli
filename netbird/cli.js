@@ -195,8 +195,10 @@ export class NetbirdCli {
 
     /**
      * Write daemon settings. The CLI only writes settings through `up`,
-     * which also connects: when NetBird was not connected before, it is
-     * disconnected again afterwards.
+     * which also connects, and which exits with "Already connected" before
+     * applying anything when connected (client/cmd/up.go). So: when
+     * connected, disconnect first and reconnect with the new flags (plain
+     * `up` if those are refused); when disconnected, disconnect again after.
      *
      * @param {Record<string, boolean|string|number>} changes - key → value
      * @param {boolean} wasConnected - NetBird state before the write
@@ -204,8 +206,13 @@ export class NetbirdCli {
      * @returns {Promise<{ok: boolean, stdout: string, stderr: string}>} the `up` result
      */
     async applySettings(changes, wasConnected, cancellable) {
-        const result = await this.run(['up', ...flagsFor(changes)], cancellable);
-        if (result.ok && !wasConnected)
+        const flags = flagsFor(changes);
+        if (wasConnected)
+            await this.run(['down'], cancellable);
+        const result = await this.run(['up', ...flags], cancellable);
+        if (wasConnected && !result.ok)
+            await this.run(['up'], cancellable);
+        else if (result.ok && !wasConnected)
             await this.run(['down'], cancellable);
         return result;
     }

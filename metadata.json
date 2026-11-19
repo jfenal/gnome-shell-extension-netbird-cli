@@ -1,7 +1,7 @@
 {
   "uuid": "netbird-cli@jfenal.github.io",
   "name": "NetBird CLI",
-  "description": "Connect and disconnect NetBird from Quick Settings. Uses the netbird CLI. Writes the clipboard only when you pick Copy IP Address.",
+  "description": "Connect and disconnect NetBird from Quick Settings, and manage peers, networks, profiles and settings in a native window. Uses the netbird CLI; no JSON socket needed.\n\nClipboard access: the extension writes your NetBird IP address, name, a peer's address, or a debug bundle key or command to the clipboard only when you click Copy IP Address, an address, a copy button, or a debug bundle result. It never reads the clipboard.",
   "shell-version": [
     "46",
     "47",
