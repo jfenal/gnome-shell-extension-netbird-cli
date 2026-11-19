@@ -1,7 +1,7 @@
 {
   "uuid": "netbird-cli@jfenal.github.io",
   "name": "NetBird CLI",
-  "description": "Connect and disconnect NetBird from Quick Settings. Uses the netbird CLI.",
+  "description": "Connect and disconnect NetBird from Quick Settings. Uses the netbird CLI. Writes the clipboard only when you pick Copy IP Address.",
   "shell-version": [
     "46",
     "47",

@@ -85,3 +85,13 @@ export function formatLocal(isoString) {
     const when = GLib.DateTime.new_from_iso8601(isoString, null);
     return when ? when.to_local().format('%Y-%m-%d %H:%M') : null;
 }
+
+/**
+ * Extract host address from a CIDR string (100.92.0.1/16 → 100.92.0.1).
+ *
+ * @param {string} cidr - CIDR notation or plain address
+ * @returns {string} host address without prefix
+ */
+export function hostAddress(cidr) {
+    return cidr.split('/')[0];
+}

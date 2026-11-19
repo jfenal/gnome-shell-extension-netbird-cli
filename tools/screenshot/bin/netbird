@@ -3,7 +3,7 @@
 case "$1 $2" in
   "status --json")
     exp=$(date -u -d '+9 hours' +%Y-%m-%dT%H:%M:%SZ)
-    printf '{"daemonStatus":"Connected","netbirdIp":"100.92.14.7/16","fqdn":"laptop.netbird.cloud","profileName":"work","peers":{"total":9,"connected":8},"sessionExpiresAt":"%s"}\n' "$exp"
+    printf '{"daemonStatus":"Connected","netbirdIp":"100.92.14.7/16","netbirdIpv6":"fd00:4e42::7","fqdn":"laptop.netbird.cloud","profileName":"work","peers":{"total":9,"connected":8},"sessionExpiresAt":"%s"}\n' "$exp"
     ;;
   "profile list")
     printf 'ID        NAME      ACTIVE\ndefault   personal  \na1b2c3d4  work      *\n'

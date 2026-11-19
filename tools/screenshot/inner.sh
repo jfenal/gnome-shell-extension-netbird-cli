@@ -27,11 +27,11 @@ sleep 2
 ev "const qs = Main.panel.statusArea.quickSettings;
     const battery = qs._system?._systemItem?._powerToggle;
     battery?.get_parent()?.remove_child(battery);
-    const keep = ['NetBird', 'Dark Style', 'Do Not Disturb'];
+    const keep = ['NetBird CLI', 'Dark Style', 'Do Not Disturb'];
     for (const c of qs.menu._grid.get_children())
         if (c.title && !keep.includes(c.title))
             qs.menu._grid.remove_child(c);
-    qs.menu._grid.get_children().find(c => c.title === 'NetBird').menu.open(false);"
+    qs.menu._grid.get_children().find(c => c.title === 'NetBird CLI').menu.open(false);"
 sleep 2
 gdbus call --session --dest org.gnome.Shell --object-path /org/gnome/Shell \
     --method org.gnome.Shell.Eval \

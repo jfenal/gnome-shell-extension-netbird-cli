@@ -1,7 +1,7 @@
 // Run with: gjs -m tests/test-netbird.js
 import GLib from 'gi://GLib';
 import System from 'system';
-import {parseProfileList, secondsUntil, formatLocal, errorText} from '../netbird/parse.js';
+import {parseProfileList, secondsUntil, formatLocal, errorText, hostAddress} from '../netbird/parse.js';
 
 let failures = 0;
 function check(name, actual, expected) {
@@ -40,6 +40,9 @@ check('formatLocal shape', /^\d{4}-\d\d-\d\d \d\d:\d\d$/.test(formatLocal(inOneH
 
 check('errorText prefers stderr', errorText({stdout: 'out', stderr: ' err\n'}, 'fb'), 'err');
 check('errorText fallback', errorText({stdout: '', stderr: ''}, 'fb'), 'fb');
+
+check('host of cidr', hostAddress('100.92.14.7/16'), '100.92.14.7');
+check('empty', hostAddress(''), '');
 
 if (failures)
     System.exit(1);

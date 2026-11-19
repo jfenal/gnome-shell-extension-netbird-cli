@@ -5,6 +5,7 @@
 import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import St from 'gi://St';
 
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
@@ -13,7 +14,7 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import * as QuickSettings from 'resource:///org/gnome/shell/ui/quickSettings.js';
 
 import {NetbirdCli, Status} from './netbird/cli.js';
-import {errorText, formatLocal, secondsUntil} from './netbird/parse.js';
+import {errorText, formatLocal, hostAddress, secondsUntil} from './netbird/parse.js';
 import {StatusIcons} from './shell/icons.js';
 
 const STATUS_LABELS = {
@@ -40,9 +41,9 @@ function isCancelled(e) {
 
 const NetbirdToggle = GObject.registerClass(
 class NetbirdToggle extends QuickSettings.QuickMenuToggle {
-    _init(settings, cli, statusIcons) {
+    _init(settings, cli, statusIcons, extension) {
         super._init({
-            title: 'NetBird',
+            title: 'NetBird CLI',
             gicon: statusIcons.forState('Idle'),
             toggleMode: false,
         });
@@ -50,6 +51,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         this._settings = settings;
         this._cli = cli;
         this._statusIcons = statusIcons;
+        this._extension = extension;
         this._status = Status.UNAVAILABLE;
         this._data = null;
         this._lastError = null;
@@ -58,6 +60,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         this._lifeCancellable = new Gio.Cancellable();
         this._refreshing = false;
         this._warnedExpiry = null;
+        this._lastConnected = false;
         this._notificationSource = null;
 
         this._buildMenu();
@@ -66,12 +69,12 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
     }
 
     _buildMenu() {
-        this.menu.setHeader(this._statusIcons.forState('Idle'), 'NetBird', '');
+        this.menu.setHeader(this._statusIcons.forState('Idle'), 'NetBird CLI', '');
 
         this._infoSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._infoSection);
         this._infoItems = {};
-        for (const key of ['ip', 'fqdn', 'peers', 'expiry', 'error']) {
+        for (const key of ['ip', 'ipv6', 'fqdn', 'peers', 'expiry', 'error']) {
             const item = new PopupMenu.PopupMenuItem('', {reactive: false});
             item.visible = false;
             this._infoItems[key] = item;
@@ -89,7 +92,18 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
         });
 
         this._extendItem = this.menu.addAction('Extend session', () => this._runAction('extend'));
+        this._copyIpItem = this.menu.addAction('Copy IP Address', () => {
+            St.Clipboard.get_default().set_text(
+                St.ClipboardType.CLIPBOARD, this._ipAddress);
+            this.menu.close();
+        });
+        this._copyIpItem.visible = false;
         this.menu.addAction('Refresh', () => this.refresh());
+        this._openItem = this.menu.addAction('Open NetBird', () => {
+            Main.panel.closeQuickSettings();
+            this._extension.openPreferences();
+        });
+        this._openItem.visible = Main.sessionMode.allowSettings;
     }
 
     get isConnected() {
@@ -109,6 +123,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
             this._lastError = error;
             this._sync();
             this._checkExpiry();
+            this._checkSessionExpiry();
         } catch (e) {
             if (!isCancelled(e))
                 logError(e, 'NetBird: status refresh failed');
@@ -140,22 +155,26 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
             subtitle,
         });
 
-        const profile = data?.profileName;
-        this.menu.setHeader(gicon, 'NetBird', profile ? `${statusLabel} · ${profile}` : statusLabel);
-
         const connected = this.isConnected;
+        this._ipAddress = connected && data?.netbirdIp ? hostAddress(data.netbirdIp) : '';
+        const headerSubtitle = this._ipAddress || statusLabel;
+        this.menu.setHeader(gicon, 'NetBird CLI', headerSubtitle);
+
         const expiry = connected ? formatLocal(data?.sessionExpiresAt) : null;
         this._setInfo('ip', 'IP', connected ? data?.netbirdIp : null);
+        this._setInfo('ipv6', 'IPv6', connected ? data?.netbirdIpv6 : null);
         this._setInfo('fqdn', 'Name', connected ? data?.fqdn : null);
         this._setInfo('peers', 'Peers',
             connected && data?.peers ? `${data.peers.connected} of ${data.peers.total} connected` : null);
         this._setInfo('expiry', 'Session expires', expiry);
         this._setInfo('error', 'Error', this._status === Status.UNAVAILABLE ? this._lastError : null);
 
+        const profile = data?.profileName;
         this._profileMenu.label.text = profile ? `Profile: ${profile}` : 'Profile';
         this._profileMenu.visible = this._status !== Status.UNAVAILABLE;
         this._extendItem.visible = Boolean(expiry);
         this._extendItem.reactive = !this._pendingAction;
+        this._copyIpItem.visible = Boolean(this._ipAddress);
     }
 
     _setInfo(key, label, value) {
@@ -228,10 +247,26 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
             [['Extend session', () => this._runAction('extend')]]);
     }
 
+    _checkSessionExpiry() {
+        // Track session expiry: notify when the session expires after we saw Connected.
+        if (this._status === Status.CONNECTED) {
+            this._lastConnected = true;
+        } else if ((this._status === Status.SESSION_EXPIRED || this._status === Status.NEEDS_LOGIN) &&
+                   this._lastConnected) {
+            this._lastConnected = false;
+            this._notify(
+                'NetBird Session Expired',
+                'Sign in again to reconnect to your NetBird network.',
+                [['Sign In', () => this._runAction('up')]]);
+        } else if (this._status === Status.UNAVAILABLE) {
+            this._lastConnected = false;
+        }
+    }
+
     _notify(title, body, actions = []) {
         if (!this._notificationSource) {
             this._notificationSource = new MessageTray.Source({
-                title: 'NetBird',
+                title: 'NetBird CLI',
                 icon: this._statusIcons.appIcon,
             });
             this._notificationSource.connectObject('destroy', () => {
@@ -317,7 +352,7 @@ class NetbirdToggle extends QuickSettings.QuickMenuToggle {
 
 const NetbirdIndicator = GObject.registerClass(
 class NetbirdIndicator extends QuickSettings.SystemIndicator {
-    _init(settings, extensionDir) {
+    _init(settings, extensionDir, extension) {
         super._init();
 
         this._settings = settings;
@@ -326,7 +361,7 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
         this._icon.gicon = this._statusIcons.forState('Connected');
         this._icon.visible = false;
 
-        this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings), this._statusIcons);
+        this._toggle = new NetbirdToggle(settings, new NetbirdCli(settings), this._statusIcons, extension);
         this._toggle.connectObject(
             'notify::checked', () => this._syncIcon(),
             'notify::gicon', () => this._syncIcon(),
@@ -376,7 +411,7 @@ class NetbirdIndicator extends QuickSettings.SystemIndicator {
 export default class NetbirdExtension extends Extension {
     enable() {
         this._settings = this.getSettings();
-        this._indicator = new NetbirdIndicator(this._settings, this.dir);
+        this._indicator = new NetbirdIndicator(this._settings, this.dir, this);
         Main.panel.statusArea.quickSettings.addExternalIndicator(this._indicator);
     }
 
