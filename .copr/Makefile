@@ -16,7 +16,9 @@ srpm:
 	set -eu; \
 	name=$$(rpmspec -q --srpm --qf '%{name}' "$(spec)"); \
 	version=$$(rpmspec -q --srpm --qf '%{version}' "$(spec)"); \
+	snapinfo=.$$(TZ=UTC git log -1 --format=%cd --date=format-local:%Y%m%d%H%M%S).git$$(git rev-parse --short=7 HEAD); \
 	src=$$(mktemp -d); \
 	git archive --format=tar.gz --prefix="$$name-$$version/" \
 	    -o "$$src/$$name-$$version.tar.gz" HEAD; \
-	rpmbuild -bs --define "_sourcedir $$src" --define "_srcrpmdir $(outdir)" "$(spec)"
+	TZ=UTC rpmbuild -bs --define "_sourcedir $$src" --define "_srcrpmdir $(outdir)" \
+	    --define "snapinfo $$snapinfo" "$(spec)"

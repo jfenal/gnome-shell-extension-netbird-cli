@@ -2,7 +2,9 @@
 
 Name:           gnome-shell-extension-netbird-cli
 Version:        0.2.0
-Release:        1%{?dist}
+# COPR builds from main add a snapshot suffix (commit date + hash), see
+# .copr/Makefile, so every push upgrades; local builds stay plain.
+Release:        1%{?snapinfo}%{?dist}
 Summary:        GNOME Shell Quick Settings toggle for NetBird
 
 License:        GPL-3.0-or-later
