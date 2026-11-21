@@ -11,9 +11,9 @@ Quick Settings:
 
 - **Toggle** runs `netbird up` / `netbird down`; subtitle shows connected
   peers. Click again while "Connecting…" to abort.
-- **Menu**: IP (click *Copy IP Address*), IPv6, FQDN, peers, session expiry,
-  profile switcher, *Extend session*, Refresh, *Open NetBird*,
-  *Extension Settings*
+- **Menu**: IP, IPv6 and FQDN (click to copy), peers, session expiry,
+  profile switcher, *Extend now* with an *Auto* checkbox for auto-extend,
+  and *Open NetBird* / *Extension Settings* buttons
 - **Session expiry**: warning N minutes before the SSO session expires, with
   an *Extend session* action (`netbird login --extend`); a notice with a
   *Sign In* action when the session has expired

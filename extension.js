@@ -2,6 +2,7 @@
 //
 // NetBird Quick Settings toggle. Drives the `netbird` CLI.
 
+import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
@@ -67,7 +68,10 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
 
         this._buildMenu();
         this.connect('clicked', () => this._onClicked());
-        this._settings.connectObject('changed::guard-gnome-vpn', () => this._syncVpnGuard(), this);
+        this._settings.connectObject(
+            'changed::guard-gnome-vpn', () => this._syncVpnGuard(),
+            'changed::auto-extend', () => this._syncAutoExtendItem(),
+            this);
         this._syncVpnGuard();
         this.refresh();
     }
@@ -78,9 +82,24 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
         this._infoSection = new PopupMenu.PopupMenuSection();
         this.menu.addMenuItem(this._infoSection);
         this._infoItems = {};
+        // Clicking an address or name row copies its value.
+        this._copyValues = {};
+        const copyable = ['ip', 'ipv6', 'fqdn'];
         for (const key of ['ip', 'ipv6', 'fqdn', 'peers', 'expiry', 'error']) {
-            const item = new PopupMenu.PopupMenuItem('', {reactive: false});
+            const reactive = copyable.includes(key);
+            const item = new PopupMenu.PopupMenuItem('', {reactive});
             item.visible = false;
+            if (reactive) {
+                item.label.x_expand = true;
+                item.add_child(new St.Icon({
+                    icon_name: 'edit-copy-symbolic',
+                    style_class: 'popup-menu-icon',
+                }));
+                item.connect('activate', () => {
+                    St.Clipboard.get_default().set_text(
+                        St.ClipboardType.CLIPBOARD, this._copyValues[key] ?? '');
+                });
+            }
             this._infoItems[key] = item;
             this._infoSection.addMenuItem(item);
         }
@@ -95,18 +114,67 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
                 this._loadProfiles();
         });
 
-        this._extendItem = this.menu.addAction('Extend session', () => this._runAction('extend'));
-        this._copyIpItem = this.menu.addAction('Copy IP Address', () => {
-            St.Clipboard.get_default().set_text(
-                St.ClipboardType.CLIPBOARD, this._ipAddress);
-            this.menu.close();
+        // Session row: extend now on the left, auto-extend checkbox on the right.
+        this._extendItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        // Non-reactive items are drawn greyed out; this one holds live buttons.
+        this._extendItem.remove_style_pseudo_class('insensitive');
+        this.menu.addMenuItem(this._extendItem);
+        const extendBox = new St.BoxLayout({x_expand: true});
+        this._extendItem.add_child(extendBox);
+        this._extendNowButton = new St.Button({
+            style_class: 'button',
+            style: 'padding: 6px 12px;',
+            label: 'Extend now',
+            can_focus: true,
+            x_expand: true,
+            x_align: Clutter.ActorAlign.START,
         });
-        this._copyIpItem.visible = false;
-        this.menu.addAction('Refresh', () => this.refresh());
-        this._openItem = this.menu.addAction('Open NetBird', () => this._openPrefs('home'));
-        this._openItem.visible = Main.sessionMode.allowSettings;
-        this._prefsItem = this.menu.addAction('Extension Settings', () => this._openPrefs('extension'));
-        this._prefsItem.visible = Main.sessionMode.allowSettings;
+        this._extendNowButton.connect('clicked', () => this._runAction('extend'));
+        extendBox.add_child(this._extendNowButton);
+        this._autoExtendIcon = new St.Icon({style_class: 'popup-menu-icon'});
+        const autoBox = new St.BoxLayout({style: 'spacing: 6px;'});
+        autoBox.add_child(this._autoExtendIcon);
+        autoBox.add_child(new St.Label({text: 'Auto', y_align: Clutter.ActorAlign.CENTER}));
+        this._autoExtendButton = new St.Button({
+            style_class: 'button',
+            style: 'padding: 6px 12px;',
+            child: autoBox,
+            can_focus: true,
+            accessible_name: 'Auto-extend session',
+            x_align: Clutter.ActorAlign.END,
+        });
+        this._autoExtendButton.connect('clicked', () => {
+            this._settings.set_boolean('auto-extend', !this._settings.get_boolean('auto-extend'));
+        });
+        extendBox.add_child(this._autoExtendButton);
+        this._syncAutoExtendItem();
+
+        // Window shortcuts share one row.
+        const linksItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
+        const linksBox = new St.BoxLayout({x_expand: true});
+        for (const [label, page, align] of [
+            ['Open NetBird', 'home', Clutter.ActorAlign.START],
+            ['Extension Settings', 'extension', Clutter.ActorAlign.END],
+        ]) {
+            const button = new St.Button({
+                style_class: 'button',
+                style: 'padding: 6px 12px;',
+                label,
+                can_focus: true,
+                x_expand: true,
+                x_align: align,
+            });
+            button.connect('clicked', () => this._openPrefs(page));
+            linksBox.add_child(button);
+        }
+        linksItem.add_child(linksBox);
+        linksItem.visible = Main.sessionMode.allowSettings;
+        this.menu.addMenuItem(linksItem);
+    }
+
+    _syncAutoExtendItem() {
+        this._autoExtendIcon.icon_name = this._settings.get_boolean('auto-extend')
+            ? 'checkbox-checked-symbolic' : 'checkbox-symbolic';
     }
 
     _openPrefs(page) {
@@ -198,6 +266,11 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
 
         const connected = this.isConnected;
         this._ipAddress = connected && data?.netbirdIp ? hostAddress(data.netbirdIp) : '';
+        this._copyValues = {
+            ip: this._ipAddress,
+            ipv6: connected && data?.netbirdIpv6 ? hostAddress(data.netbirdIpv6) : '',
+            fqdn: connected ? data?.fqdn ?? '' : '',
+        };
         const headerSubtitle = this._ipAddress || statusLabel;
         this.menu.setHeader(gicon, 'NetBird CLI', headerSubtitle);
 
@@ -217,8 +290,7 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
             this._profilesDisabled = false;
         this._profileMenu.visible = this._status !== Status.UNAVAILABLE && !this._profilesDisabled;
         this._extendItem.visible = Boolean(expiry);
-        this._extendItem.reactive = !this._pendingAction;
-        this._copyIpItem.visible = Boolean(this._ipAddress);
+        this._extendNowButton.reactive = !this._pendingAction;
     }
 
     _setInfo(key, label, value) {
