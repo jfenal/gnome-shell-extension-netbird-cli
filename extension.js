@@ -6,6 +6,7 @@ import Clutter from 'gi://Clutter';
 import GObject from 'gi://GObject';
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
+import Shell from 'gi://Shell';
 import St from 'gi://St';
 
 import {Extension, InjectionManager} from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -20,6 +21,9 @@ import {StatusIcons} from './shell/icons.js';
 import {pollIntervalSeconds} from './shell/polling.js';
 import {VpnButtonGuard} from './shell/vpnButtonGuard.js';
 import {autoExtendDue, autoExtendLeadSeconds} from './shell/autoExtend.js';
+
+// Desktop entry shipped by NetBird's GUI package (netbird-ui).
+const NETBIRD_DESKTOP_ID = 'netbird.desktop';
 
 // Give up on an automatic renewal the user did not complete in the browser.
 const AUTO_EXTEND_TIMEOUT_SECONDS = 5 * 60;
@@ -152,9 +156,9 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
         // Window shortcuts share one row.
         const linksItem = new PopupMenu.PopupBaseMenuItem({reactive: false, can_focus: false});
         const linksBox = new St.BoxLayout({x_expand: true});
-        for (const [label, page, align] of [
-            ['Open NetBird', 'home', Clutter.ActorAlign.START],
-            ['Extension Settings', 'extension', Clutter.ActorAlign.END],
+        for (const [label, onClicked, align] of [
+            ['Open NetBird', () => this._openNetbird(), Clutter.ActorAlign.START],
+            ['Extension Settings', () => this._openPrefs('extension'), Clutter.ActorAlign.END],
         ]) {
             const button = new St.Button({
                 style_class: 'button',
@@ -164,7 +168,7 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
                 x_expand: true,
                 x_align: align,
             });
-            button.connect('clicked', () => this._openPrefs(page));
+            button.connect('clicked', onClicked);
             linksBox.add_child(button);
         }
         linksItem.add_child(linksBox);
@@ -175,6 +179,18 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
     _syncAutoExtendItem() {
         this._autoExtendIcon.icon_name = this._settings.get_boolean('auto-extend')
             ? 'checkbox-checked-symbolic' : 'checkbox-symbolic';
+    }
+
+    // Launch NetBird's desktop UI when installed; otherwise fall back to the
+    // extension's own NetBird window.
+    _openNetbird() {
+        const app = Shell.AppSystem.get_default().lookup_app(NETBIRD_DESKTOP_ID);
+        if (!app) {
+            this._openPrefs('home');
+            return;
+        }
+        Main.panel.closeQuickSettings();
+        app.activate();
     }
 
     _openPrefs(page) {

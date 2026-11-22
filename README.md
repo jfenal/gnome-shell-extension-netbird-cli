@@ -25,7 +25,9 @@ Quick Settings:
   other VPNs are disconnected before connecting
 - **Panel icon** while connected (optional), NetBird state icons
 
-NetBird window (*Open NetBird*, or the extension's preferences):
+*Open NetBird* launches NetBird's desktop app (`netbird.desktop`) when
+installed, otherwise the extension's NetBird window (also the extension's
+preferences):
 
 - **Home**: connect switch, state, FQDN / IPv4 / IPv6 (click to copy),
   exit-node selector
