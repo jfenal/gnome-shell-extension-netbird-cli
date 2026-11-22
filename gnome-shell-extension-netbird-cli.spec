@@ -1,7 +1,7 @@
 %global uuid netbird-cli@jfenal.github.io
 
 Name:           gnome-shell-extension-netbird-cli
-Version:        0.2.4
+Version:        0.2.5
 # COPR builds from main add a snapshot suffix (commit date + hash), see
 # .copr/Makefile, so every push upgrades; local builds stay plain.
 Release:        1%{?snapinfo}%{?dist}
@@ -58,6 +58,11 @@ gjs -m tests/test-auto-extend.js
 %{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 
 %changelog
+* Sun Nov 22 2026 Jérôme Fenal <jfenal@redhat.com> - 0.2.5-1
+- About group in Extension settings: version and source code link
+- Poll interval slider, logarithmic from 1 s to 15 min
+- Expiry warning and auto-extend no longer missed with long poll intervals
+
 * Sun Nov 22 2026 Jérôme Fenal <jfenal@redhat.com> - 0.2.4-1
 - Build the extension zip with make dist (was make pack)
 
