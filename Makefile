@@ -1,7 +1,7 @@
 UUID := netbird-cli@jfenal.github.io
 INSTALL_DIR := $(HOME)/.local/share/gnome-shell/extensions/$(UUID)
 
-.PHONY: lint smoke-container install uninstall schemas pack test nested enable disable prefs logs screenshot smoke rpm
+.PHONY: lint smoke-container install uninstall schemas dist test nested enable disable prefs logs screenshot smoke rpm
 
 install: schemas
 	mkdir -p $(dir $(INSTALL_DIR))
@@ -13,7 +13,7 @@ uninstall:
 schemas:
 	glib-compile-schemas --strict schemas
 
-pack:
+dist:
 	mkdir -p dist
 	gnome-extensions pack --force --out-dir=dist --extra-source=netbird --extra-source=shell --extra-source=prefs --extra-source=icons --extra-source=LICENSES .
 
