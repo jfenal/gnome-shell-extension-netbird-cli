@@ -1,7 +1,7 @@
 %global uuid netbird-cli@jfenal.github.io
 
 Name:           gnome-shell-extension-netbird-cli
-Version:        0.2.2
+Version:        0.2.3
 # COPR builds from main add a snapshot suffix (commit date + hash), see
 # .copr/Makefile, so every push upgrades; local builds stay plain.
 Release:        1%{?snapinfo}%{?dist}
@@ -58,6 +58,9 @@ gjs -m tests/test-auto-extend.js
 %{_datadir}/glib-2.0/schemas/org.gnome.shell.extensions.netbird-cli.gschema.xml
 
 %changelog
+* Sun Nov 22 2026 Jérôme Fenal <jfenal@redhat.com> - 0.2.3-1
+- Open NetBird launches the NetBird desktop app when installed
+
 * Sat Nov 21 2026 Jérôme Fenal <jfenal@redhat.com> - 0.2.2-1
 - Compact Quick Settings menu: click IP, IPv6 or name to copy
 - Extend now button and Auto checkbox for auto-extend on one row
