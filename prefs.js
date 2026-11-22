@@ -33,7 +33,7 @@ export default class NetbirdPreferences extends ExtensionPreferences {
         const networksPage = createNetworksPage(model, window);
         const profilesPage = createProfilesPage(model, window);
         const settingsPage = createDaemonSettingsPage(model, window);
-        const extensionPage = createExtensionPage(model, window);
+        const extensionPage = createExtensionPage(model, window, this);
 
         window.add(homePage);
         window.add(peersPage);

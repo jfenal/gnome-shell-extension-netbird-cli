@@ -3,7 +3,7 @@
   <schema id="org.gnome.shell.extensions.netbird-cli" path="/org/gnome/shell/extensions/netbird-cli/">
     <key name="poll-interval" type="u">
       <default>5</default>
-      <range min="1" max="300"/>
+      <range min="1" max="900"/>
       <summary>Status poll interval (seconds)</summary>
     </key>
     <key name="netbird-path" type="s">
