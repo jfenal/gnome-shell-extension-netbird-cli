@@ -7,11 +7,16 @@
 const DEFAULT_LEAD_MINUTES = 10;
 
 /**
+ * Expiry is only checked when the status is polled. Adding the poll
+ * interval makes the renewal start at the last poll before the lead window
+ * opens instead of being skipped by a long interval.
+ *
  * @param {number} warningMinutes - the expiry-warning-minutes setting
+ * @param {number} [pollSeconds] - the poll-interval setting
  * @returns {number} seconds before the deadline to renew
  */
-export function autoExtendLeadSeconds(warningMinutes) {
-    return (warningMinutes || DEFAULT_LEAD_MINUTES) * 60;
+export function autoExtendLeadSeconds(warningMinutes, pollSeconds = 0) {
+    return (warningMinutes || DEFAULT_LEAD_MINUTES) * 60 + pollSeconds;
 }
 
 /**

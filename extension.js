@@ -375,12 +375,15 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
         const warnMinutes = this._settings.get_uint('expiry-warning-minutes');
         const remaining = secondsUntil(expiresAt);
         const autoExtend = this._settings.get_boolean('auto-extend');
+        // Act at the last poll before a window opens: the next poll (up to
+        // poll-interval away) may already be past it, or past the deadline.
+        const pollSeconds = this._settings.get_uint('poll-interval');
 
         if (autoExtendDue({
             enabled: autoExtend,
             connected: this.isConnected,
             secondsLeft: remaining,
-            leadSeconds: autoExtendLeadSeconds(warnMinutes),
+            leadSeconds: autoExtendLeadSeconds(warnMinutes, pollSeconds),
             deadline: expiresAt,
             lastAttemptDeadline: this._autoExtendDeadline,
         })) {
@@ -395,7 +398,7 @@ class NetbirdToggleImpl extends QuickSettings.QuickMenuToggle {
         // Warn once per session (a new expiry means the session was renewed).
         if (!warnMinutes || this._warnedExpiry === expiresAt)
             return;
-        if (remaining === null || remaining <= 0 || remaining > warnMinutes * 60)
+        if (remaining === null || remaining <= 0 || remaining > warnMinutes * 60 + pollSeconds)
             return;
         this._warnExpiry(expiresAt, remaining);
     }

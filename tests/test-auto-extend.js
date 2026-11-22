@@ -29,6 +29,8 @@ check('a renewed deadline is due again', autoExtendDue({...due, deadline: 'D2', 
 
 check('lead time follows the warning setting', autoExtendLeadSeconds(30), 1800);
 check('lead time when the warning is disabled', autoExtendLeadSeconds(0), 600);
+check('lead time covers the poll interval', autoExtendLeadSeconds(10, 900), 1500);
+check('lead time covers the poll interval when the warning is disabled', autoExtendLeadSeconds(0, 300), 900);
 
 if (failures) {
     print(`\n${failures} failure(s)`);
